@@ -1,97 +1,190 @@
+﻿using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.InputSystem;
 
-namespace AF {
-
-    public static class PlayerAnimatorParameters {
-        public static string movementSpeed = "movementSpeed";
-        public static string isRolling = "isRolling";
-    }
-
-    public static class PlayerAnimationClips
-    {
-        public static string Roll = "Roll";
-    }
+namespace AF
+{
 
     public class Player : MonoBehaviour
     {
-        Animator animator;
 
-        public InputActions inputActions;
-
-        [Header("Movement")]
-        public int walkSpeed = 3;
-        public int runSpeed = 5;
-        public int rotationSpeed = 8;
+        InputActions inputActions;
 
         [SerializeField] private Vector3 moveDirection;
+        [SerializeField] private Vector3 lastMoveDirection;
+
+        protected Animator animator => GetComponent<Animator>();
+
+        [Header("Movement")]
+        public float walkSpeed = 6;
+        public float runSpeed = 9;
+        public float rotationSpeed = 8;
+
+        [Header("Combat")]
+        public GameObject shieldGameObject;
+        private int attackComboIndex = 0;
+
+        [Header("Stats")]
+        public int health = 100;
+        public int stamina = 60;
 
         [Header("Flags")]
         public bool isSprinting = false;
         public bool isRolling = false;
+        public bool isAttacking = false;
+        public bool isGuarding = false;
 
-        void Awake() {
-            if (inputActions == null) {
+        void OnEnable()
+        {
+            inputActions.Enable();
+        }
+
+        void Awake()
+        {
+            if (inputActions == null)
+            {
                 inputActions = new InputActions();
             }
 
+            // Movement Input
             inputActions.PlayerActions.Movement.performed += ctx => moveDirection = ctx.ReadValue<Vector2>();
-            inputActions.PlayerActions.Movement.canceled += ctx => moveDirection = Vector2.zero;
+            inputActions.PlayerActions.Movement.canceled += ctx =>
+            {
+                lastMoveDirection = moveDirection;
+                moveDirection = Vector3.zero;
+            };
 
             inputActions.PlayerActions.Sprint.performed += ctx => isSprinting = true;
             inputActions.PlayerActions.Sprint.canceled += ctx => isSprinting = false;
 
             inputActions.PlayerActions.Roll.performed += ctx => HandleRoll();
+
+            // Combat Input
+            inputActions.PlayerActions.Attack.performed += ctx => HandleAttack();
+
+            inputActions.PlayerActions.Guard.performed += ctx => Guard();
+            inputActions.PlayerActions.Guard.canceled += ctx => StopGuard();
         }
 
-        void Start() {
-            animator = GetComponent<Animator>();
+        private void Start()
+        {
+            if (shieldGameObject != null)
+            {
+                shieldGameObject.SetActive(false);
+            }
         }
 
-        void OnEnable() {
-            inputActions.Enable();
+        protected void Update()
+        {
+            isRolling = animator.GetBool("isRolling");
+            isAttacking = animator.GetBool("isAttacking");
+            isGuarding = animator.GetBool("isGuarding");
         }
 
-        void Update() {
-            isRolling = animator.GetBool(PlayerAnimatorParameters.isRolling);
-
+        private void FixedUpdate()
+        {
             HandleMovement();
         }
 
-        /// <summary>
-        /// Handles the player movement
-        /// </summary>
-        void HandleMovement() {
-            if (moveDirection.magnitude == 0) {
-                animator.SetFloat(PlayerAnimatorParameters.movementSpeed, 0f, .05f, Time.deltaTime);
+        #region Movement
+
+        void HandleMovement()
+        {
+            if (isAttacking || isRolling)
+            {
                 return;
             }
 
-            Vector3 targetVector = new Vector3(moveDirection.x, 0, moveDirection.y);
-            var speed = (isSprinting ? runSpeed : walkSpeed) * Time.deltaTime;
+            Vector3 targetVector = moveDirection.magnitude != 0
+                ? new Vector3(moveDirection.x, 0, moveDirection.y)
+                : new Vector3(lastMoveDirection.x, 0, lastMoveDirection.y);
 
-            //  targetVector = Quaternion.Euler(0, Camera.main.transform.eulerAngles.y, 0) * targetVector;
-            var targetPosition = transform.position + targetVector * speed;
-             transform.position = targetPosition;
+            var rotation = Quaternion.LookRotation(targetVector);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, rotationSpeed);
 
-             var rotation = Quaternion.LookRotation(targetVector);
-             transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, rotationSpeed);
 
-             if (isSprinting) {
-                animator.SetFloat(PlayerAnimatorParameters.movementSpeed, 1f, .05f, Time.deltaTime);
+            if (moveDirection.magnitude == 0)
+            {
+                animator.SetFloat("movementSpeed", 0f, .05f, Time.deltaTime);
                 return;
-             }
+            }
 
-            animator.SetFloat(PlayerAnimatorParameters.movementSpeed, 0.5f, .05f, Time.deltaTime);
+            var speed = (isSprinting ? runSpeed : walkSpeed) * Time.deltaTime;
+            var targetPosition = transform.position + targetVector * speed;
+            transform.position = targetPosition;
+
+            if (isSprinting)
+            {
+                animator.SetFloat("movementSpeed", 1f, .05f, Time.deltaTime);
+                return;
+            }
+
+            animator.SetFloat("movementSpeed", 0.5f, .05f, Time.deltaTime);
         }
 
-        void HandleRoll()
+        protected void HandleRoll()
         {
-            animator.CrossFade(PlayerAnimationClips.Roll, 0.05f);
+            if (isAttacking)
+            {
+                return;
+            }
+
+            animator.CrossFade("Roll", 0.05f);
         }
+        #endregion
+
+        #region Combat
+        protected void HandleAttack()
+        {
+            if (isAttacking)
+            {
+                return;
+            }
+
+            if (isGuarding)
+            {
+                StopGuard();
+            }
+
+            if (attackComboIndex > 2)
+            {
+                attackComboIndex = 0;
+            }
+
+            if (attackComboIndex == 0)
+            {
+                animator.CrossFade("Attack1", 0.05f);
+            }
+            else if (attackComboIndex == 1)
+            {
+                animator.CrossFade("Attack2", 0.05f);
+            }
+            else
+            {
+                animator.CrossFade("Attack3", 0.05f);
+            }
+
+            attackComboIndex++;
+        }
+
+        protected void Guard()
+        {
+            animator.SetBool("isGuarding", true);
+
+            if (shieldGameObject != null)
+            {
+                shieldGameObject.SetActive(true);
+            }
+        }
+        protected void StopGuard()
+        {
+            animator.SetBool("isGuarding", false);
+
+            if (shieldGameObject != null)
+            {
+                shieldGameObject.SetActive(false);
+            }
+        }
+        #endregion
 
     }
-
 }

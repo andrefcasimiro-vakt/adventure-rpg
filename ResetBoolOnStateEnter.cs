@@ -2,24 +2,27 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
-[System.Serializable]
-public class AnimatorBool
+namespace AF
 {
-    public string name;
-    public bool value;
-}
-
-public class ResetBoolOnStateEnter : StateMachineBehaviour
-{
-    public List<AnimatorBool> boolList = new List<AnimatorBool>();
-
-    override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
+    [System.Serializable]
+    public class AnimatorBool
     {
-        foreach (AnimatorBool b in boolList)
+        public string name;
+        public bool value;
+    }
+
+    public class ResetBoolOnStateEnter : StateMachineBehaviour
+    {
+        public List<AnimatorBool> boolList = new List<AnimatorBool>();
+
+        override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
         {
-            animator.SetBool(b.name, b.value);
+            foreach (AnimatorBool b in boolList)
+            {
+                animator.SetBool(b.name, b.value);
+            }
         }
+
     }
 
 }

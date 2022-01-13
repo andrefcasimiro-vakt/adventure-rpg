@@ -1,24 +1,21 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace AF
 {
-    public class EnableRootMotion : StateMachineBehaviour
+
+    public class DisableRootMotionOnEnter : StateMachineBehaviour
     {
         override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
         {
-            animator.applyRootMotion = true;
+            animator.applyRootMotion = false;
         }
 
         public override void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
         {
-            animator.applyRootMotion = true;
-        }
-
-        override public void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
-        {
             animator.applyRootMotion = false;
         }
     }
+
 }
