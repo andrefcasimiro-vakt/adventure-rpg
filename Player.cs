@@ -9,10 +9,11 @@ namespace AF
 
         InputActions inputActions;
 
-        [SerializeField] private Vector3 moveDirection;
-        [SerializeField] private Vector3 lastMoveDirection;
+        private Vector3 moveDirection;
+        private Vector3 lastMoveDirection;
 
         protected Animator animator => GetComponent<Animator>();
+        protected Rigidbody rigidbody => GetComponent<Rigidbody>();
 
         [Header("Movement")]
         public float walkSpeed = 6;
@@ -20,8 +21,11 @@ namespace AF
         public float rotationSpeed = 8;
 
         [Header("Combat")]
+        public GameObject weaponGameObject;
+        Hitbox weaponHitbox;
         public GameObject shieldGameObject;
         private int attackComboIndex = 0;
+        public float impactOnHittinEnemyShield = 50000f;
 
         [Header("Stats")]
         public int health = 100;
@@ -32,6 +36,9 @@ namespace AF
         public bool isRolling = false;
         public bool isAttacking = false;
         public bool isGuarding = false;
+
+        public LayerMask characterLayer;
+
 
         void OnEnable()
         {
@@ -71,6 +78,11 @@ namespace AF
             {
                 shieldGameObject.SetActive(false);
             }
+
+            if (weaponGameObject != null)
+            {
+                weaponHitbox = weaponGameObject.GetComponent<Hitbox>();
+            }
         }
 
         protected void Update()
@@ -78,17 +90,19 @@ namespace AF
             isRolling = animator.GetBool("isRolling");
             isAttacking = animator.GetBool("isAttacking");
             isGuarding = animator.GetBool("isGuarding");
+
+            HandleMovement();
         }
 
         private void FixedUpdate()
         {
-            HandleMovement();
         }
 
         #region Movement
 
         void HandleMovement()
         {
+
             if (isAttacking || isRolling)
             {
                 return;
@@ -99,8 +113,21 @@ namespace AF
                 : new Vector3(lastMoveDirection.x, 0, lastMoveDirection.y);
 
             var rotation = Quaternion.LookRotation(targetVector);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, rotationSpeed);
 
+            if (isGuarding)
+            {
+                // Lock on to target logic
+                Character closestCharacter = shieldGameObject.GetComponent<Shield>().FindClosestCharacter(this.transform.position);
+
+                if (closestCharacter != null)
+                {
+                    var lookPos = closestCharacter.transform.position - transform.position;
+                    lookPos.y = 0;
+                    rotation = Quaternion.LookRotation(lookPos);
+                }
+            }
+
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, rotationSpeed);
 
             if (moveDirection.magnitude == 0)
             {
@@ -127,6 +154,17 @@ namespace AF
             {
                 return;
             }
+
+            if (isGuarding) { 
+                StopGuard();
+            }
+
+            Vector3 targetVector = moveDirection.magnitude != 0
+                ? new Vector3(moveDirection.x, 0, moveDirection.y)
+                : new Vector3(lastMoveDirection.x, 0, lastMoveDirection.y);
+
+            var rotation = Quaternion.LookRotation(targetVector);
+            transform.rotation = rotation;
 
             animator.CrossFade("Roll", 0.05f);
         }
@@ -184,7 +222,34 @@ namespace AF
                 shieldGameObject.SetActive(false);
             }
         }
+
+        public void TakeDamage()
+        {
+
+        }
         #endregion
 
+        #region Physics
+        public void ApplyKnockback(Vector3 enemyPosition)
+        {
+            Vector3 _moveDirection = transform.position - enemyPosition;
+            rigidbody.AddForce(_moveDirection.normalized * impactOnHittinEnemyShield);
+        }
+        #endregion
+
+
+        #region
+        /// <summary>
+        /// Animation Event Function. Handles the hitbox activation
+        /// </summary>
+        public void ActivateHitbox()
+        {
+            weaponHitbox.Enable();
+        }
+        public void DeactivateHitbox()
+        {
+            weaponHitbox.Disable();
+        }
+        #endregion
     }
 }
