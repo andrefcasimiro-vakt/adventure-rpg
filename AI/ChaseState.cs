@@ -13,6 +13,11 @@ namespace AF
 
         public override State Tick(Character character)
         {
+            if (character.player.isDead)
+            {
+                return patrolState;
+            }
+
             if (character.isBusy)
             {
                 return this;

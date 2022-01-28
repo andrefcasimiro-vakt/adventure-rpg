@@ -32,6 +32,16 @@ namespace AF
                 return;
             }
 
+            if (invoker.receivingParryDamage)
+            {
+                invoker.TakeParryDamage(
+                    GameObject.FindWithTag("Player").GetComponent<Player>().weaponGameObject.GetComponent<Hitbox>().weaponCriticalDamage,
+                    invoker.parryPositionBloodFx.position
+                );
+
+                invoker.animator.SetBool("receivingParryDamage", false);
+            }
+
             parryingOngoing = invoker.animator.GetBool("parryOngoing");
 
             if (parryingOngoing == false)
@@ -44,12 +54,16 @@ namespace AF
             }
         }
 
-        public void Dispatch(Player player, EnemyMelee target)
+        public void Dispatch(Player player, Character target)
         {
             invoker = target;
 
+            var lookPos = target.transform.position - player.transform.position;
+            lookPos.y = 0;
+            var rotation = Quaternion.LookRotation(lookPos);
+            player.transform.rotation = rotation;
+
             player.transform.position = target.parryPosition.position;
-            player.transform.rotation = Quaternion.LookRotation(target.parryPosition.position - player.transform.position);
 
             player.GetComponent<Animator>().Play("Parry");
             invoker.animator.Play("Parried");

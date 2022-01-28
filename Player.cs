@@ -29,7 +29,6 @@ namespace AF
         [Header("Stats")]
         public float health = 100;
         public float stamina = 60;
-        public float attackPower = 30;
 
         [Header("Flags")]
         public bool isSprinting = false;
@@ -253,7 +252,7 @@ namespace AF
             isParrying = false;
         }
 
-        public void TakeDamage(float amount, EnemyMelee enemy)
+        public void TakeDamage(float amount, Character enemy)
         {
             if (IsNotAvailable())
             {

@@ -20,6 +20,8 @@ namespace AF
 
         public override State Tick(Character character)
         {
+            character.FacePlayer(character.rotationSpeed);
+
             if (character.player.isDead)
             {
                 return patrolState;
@@ -36,7 +38,6 @@ namespace AF
             }
 
             character.animator.CrossFade("Idle", .05f);
-            character.FacePlayer(character.rotationSpeed);
 
             // Reactions
 

@@ -13,7 +13,15 @@ namespace AF {
         [Header("Stats")]
         public float health = 100;
         public float stamina = 60;
-        public float attackPower = 5;
+
+        [Header("Combat")]
+        public Hitbox weaponHitbox;
+        public GameObject shield;
+        public State stateTriggeredWhenSeeingPlayer;
+
+        public Transform parryPosition;
+        public Transform parryPositionBloodFx;
+
 
         [Header("Senses")]
         public float rotationSpeed = 1.5f;
@@ -25,6 +33,7 @@ namespace AF {
         public bool isTakingDamage;
         public bool isRolling;
         public bool isDead;
+        public bool receivingParryDamage;
 
         [Header("State")]
         public State currentState;
@@ -47,6 +56,11 @@ namespace AF {
         protected void Start()
         {
             player = GameObject.FindWithTag("Player").GetComponent<Player>();
+
+            if (shield != null)
+            {
+                shield.SetActive(false);
+            }
         }
 
         protected void Update()
@@ -56,6 +70,12 @@ namespace AF {
             isTakingDamage = animator.GetBool("isTakingDamage");
             isRolling = animator.GetBool("isRolling");
             isDead = animator.GetBool("isDead");
+            receivingParryDamage = animator.GetBool("receivingParryDamage");
+
+            if (shield != null)
+            {
+                shield.SetActive(isBlocking);
+            }
 
             if (IsNotAvailable())
             {
@@ -106,6 +126,20 @@ namespace AF {
             transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Time.deltaTime * rotationSpeed);
         }
 
+        public void TakeParryDamage(float amount, Vector3 bloodFxPos)
+        {
+            ObjectPooler.instance.SpawnFromPool("Blood", bloodFxPos, Quaternion.identity, 1f);
+
+            health -= amount;
+
+            if (health <= 0)
+            {
+
+                DieAndCancelParrySystem();
+
+            }
+        }
+
         public virtual void TakeDamage(float amount)
         {
             if (IsNotAvailable())
@@ -134,6 +168,12 @@ namespace AF {
         public void Die()
         {
             PlayBusyAnimation("Die");
+            StartCoroutine(Destroy());
+        }
+
+        public void DieAndCancelParrySystem()
+        {
+            PlayBusyAnimation("DieAndCancelParrySystem");
             StartCoroutine(Destroy());
         }
 
@@ -173,6 +213,31 @@ namespace AF {
         public bool IsNotAvailable()
         {
             return isDead || ParrySystem.instance.parryingOngoing;
+        }
+
+        public void ActivateHitbox()
+        {
+            player.isParrying = false;
+
+            weaponHitbox.Enable();
+        }
+        public void DeactivateHitbox()
+        {
+            weaponHitbox.Disable();
+        }
+
+        public void DisableParry()
+        {
+            Debug.Log("Disable parry");
+
+            if (player.isParrying)
+            {
+                Debug.Log("Player was parrying!");
+
+                ParrySystem.instance.Dispatch(player, this);
+            }
+
+            player.isParrying = false;
         }
     }
 }

@@ -5,13 +5,14 @@ using UnityEngine;
 namespace AF { 
     public class Hitbox : MonoBehaviour
     {
-        public EnemyMelee owner;
-
+        public Character weaponOwner;
         public bool isPlayerWeapon = false;
+
+        public float weaponDamage = 30;
+        public float weaponCriticalDamage = 75;
 
         Character enemy;
         Player player;
-
         BoxCollider boxCollider => GetComponent<BoxCollider>();
 
         // Start is called before the first frame update
@@ -44,11 +45,11 @@ namespace AF {
 
                 if (enemy != null)
                 {
-                    enemy.TakeDamage(player.attackPower);
+                    enemy.TakeDamage(weaponDamage);
                 }
             }
             else if (other.gameObject == player.gameObject) { 
-                player.TakeDamage(owner.attackPower, owner);
+                player.TakeDamage(weaponDamage, weaponOwner);
             }
 
         }
