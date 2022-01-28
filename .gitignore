@@ -1,4 +1,5 @@
 #Ignore all .meta file
 *.meta
+*.cs.meta
 #But not source file with postfix. which is everything but a folder
 !*.*.meta
