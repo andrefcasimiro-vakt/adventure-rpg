@@ -10,7 +10,6 @@ namespace AF
         InputActions inputActions;
 
         private Vector3 moveDirection;
-        private Vector3 lastMoveDirection;
 
         protected Animator animator => GetComponent<Animator>();
         protected Rigidbody rigidbody => GetComponent<Rigidbody>();
@@ -28,14 +27,17 @@ namespace AF
         public float impactOnHittinEnemyShield = 50000f;
 
         [Header("Stats")]
-        public int health = 100;
-        public int stamina = 60;
+        public float health = 100;
+        public float stamina = 60;
+        public float attackPower = 30;
 
         [Header("Flags")]
         public bool isSprinting = false;
         public bool isRolling = false;
         public bool isAttacking = false;
         public bool isGuarding = false;
+        public bool isParrying = false;
+        public bool isDead = false;
 
         public LayerMask characterLayer;
 
@@ -54,11 +56,7 @@ namespace AF
 
             // Movement Input
             inputActions.PlayerActions.Movement.performed += ctx => moveDirection = ctx.ReadValue<Vector2>();
-            inputActions.PlayerActions.Movement.canceled += ctx =>
-            {
-                lastMoveDirection = moveDirection;
-                moveDirection = Vector3.zero;
-            };
+            inputActions.PlayerActions.Movement.canceled += ctx => moveDirection = Vector3.zero;
 
             inputActions.PlayerActions.Sprint.performed += ctx => isSprinting = true;
             inputActions.PlayerActions.Sprint.canceled += ctx => isSprinting = false;
@@ -90,13 +88,17 @@ namespace AF
             isRolling = animator.GetBool("isRolling");
             isAttacking = animator.GetBool("isAttacking");
             isGuarding = animator.GetBool("isGuarding");
+            isDead = animator.GetBool("isDead");
+
+            if (IsNotAvailable())
+            {
+                return;
+            }
+
 
             HandleMovement();
         }
 
-        private void FixedUpdate()
-        {
-        }
 
         #region Movement
 
@@ -108,30 +110,39 @@ namespace AF
                 return;
             }
 
-            Vector3 targetVector = moveDirection.magnitude != 0
-                ? new Vector3(moveDirection.x, 0, moveDirection.y)
-                : new Vector3(lastMoveDirection.x, 0, lastMoveDirection.y);
+            Vector3 targetVector = new Vector3(moveDirection.x, 0, moveDirection.y);
 
             var rotation = Quaternion.LookRotation(targetVector);
 
             if (isGuarding)
             {
-                // Lock on to target logic
-                Character closestCharacter = shieldGameObject.GetComponent<Shield>().FindClosestCharacter(this.transform.position);
-
-                if (closestCharacter != null)
+                if (isSprinting)
                 {
-                    var lookPos = closestCharacter.transform.position - transform.position;
-                    lookPos.y = 0;
-                    rotation = Quaternion.LookRotation(lookPos);
+                    StopGuard();
                 }
+                else
+                {
+                    // Lock on to target logic
+                    Character closestCharacter = shieldGameObject.GetComponent<Shield>().FindClosestCharacter(this.transform.position);
+
+                    if (closestCharacter != null)
+                    {
+                        var lookPos = closestCharacter.transform.position - transform.position;
+                        lookPos.y = 0;
+                        rotation = Quaternion.LookRotation(lookPos);
+                    }
+                }
+
             }
 
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, rotationSpeed);
+            if (moveDirection.magnitude != 0)
+            {
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, rotationSpeed);
+            }
 
             if (moveDirection.magnitude == 0)
             {
-                animator.SetFloat("movementSpeed", 0f, .05f, Time.deltaTime);
+                animator.SetFloat("movementSpeed", 0f, 0.05f, Time.deltaTime);
                 return;
             }
 
@@ -141,15 +152,20 @@ namespace AF
 
             if (isSprinting)
             {
-                animator.SetFloat("movementSpeed", 1f, .05f, Time.deltaTime);
+                animator.SetFloat("movementSpeed", 1f, 0.05f, Time.deltaTime);
                 return;
             }
 
-            animator.SetFloat("movementSpeed", 0.5f, .05f, Time.deltaTime);
+            animator.SetFloat("movementSpeed", 0.5f, 0.05f, Time.deltaTime);
         }
 
         protected void HandleRoll()
         {
+            if (IsNotAvailable())
+            {
+                return;
+            }
+
             if (isAttacking)
             {
                 return;
@@ -159,12 +175,12 @@ namespace AF
                 StopGuard();
             }
 
-            Vector3 targetVector = moveDirection.magnitude != 0
-                ? new Vector3(moveDirection.x, 0, moveDirection.y)
-                : new Vector3(lastMoveDirection.x, 0, lastMoveDirection.y);
-
+            Vector3 targetVector = new Vector3(moveDirection.x, 0, moveDirection.y);
             var rotation = Quaternion.LookRotation(targetVector);
-            transform.rotation = rotation;
+
+            if (moveDirection.magnitude != 0) { 
+                transform.rotation = rotation;
+            }
 
             animator.CrossFade("Roll", 0.05f);
         }
@@ -173,6 +189,11 @@ namespace AF
         #region Combat
         protected void HandleAttack()
         {
+            if (IsNotAvailable())
+            {
+                return;
+            }
+
             if (isAttacking)
             {
                 return;
@@ -206,12 +227,19 @@ namespace AF
 
         protected void Guard()
         {
+            if (IsNotAvailable())
+            {
+                return;
+            }
+
             animator.SetBool("isGuarding", true);
 
             if (shieldGameObject != null)
             {
                 shieldGameObject.SetActive(true);
             }
+
+            isParrying = true;
         }
         protected void StopGuard()
         {
@@ -221,18 +249,53 @@ namespace AF
             {
                 shieldGameObject.SetActive(false);
             }
+
+            isParrying = false;
         }
 
-        public void TakeDamage()
+        public void TakeDamage(float amount, EnemyMelee enemy)
         {
+            if (IsNotAvailable())
+            {
+                return;
+            }
 
+            if (isRolling)
+            {
+                return;
+            }
+
+            if (isGuarding)
+            {
+                enemy.ApplyKnockback(this.transform.position);
+                animator.Play("BlockHit");
+                return;
+            }
+
+            animator.Play("TakeDamage");
+            ObjectPooler.instance.SpawnFromPool("Blood", enemy.weaponHitbox.transform.position, Quaternion.identity, 1f);
+
+            health -= amount;
+
+            if (health <= 0)
+            {
+
+                Die();
+            }
         }
         #endregion
+
+
+        public void Die()
+        {
+            animator.Play("Die");
+        }
 
         #region Physics
         public void ApplyKnockback(Vector3 enemyPosition)
         {
             Vector3 _moveDirection = transform.position - enemyPosition;
+            _moveDirection.y = 0;
             rigidbody.AddForce(_moveDirection.normalized * impactOnHittinEnemyShield);
         }
         #endregion
@@ -251,5 +314,11 @@ namespace AF
             weaponHitbox.Disable();
         }
         #endregion
+
+
+        public bool IsNotAvailable()
+        {
+            return isDead || ParrySystem.instance.parryingOngoing;
+        }
     }
 }

@@ -7,17 +7,10 @@ namespace AF {
         public PatrolState patrolState;
         public ChaseState chaseState;
 
-        public override void OnEnter(Character character)
-        {
-            if (!character.animator.GetBool("isTurning"))
-            {
-                character.animator.Play("Idle");
-            }
-        }
-
-
         public override State Tick(Character character)
         {
+            character.animator.CrossFade("Idle", .2f);
+
             character.currentTimeOnWaypoint += Time.deltaTime;
 
             if (character.PlayerIsSighted())

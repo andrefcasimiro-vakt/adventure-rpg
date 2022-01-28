@@ -9,12 +9,9 @@ namespace AF
         public ChaseState chaseState;
         public IdleState idleState;
 
-        public override void OnEnter(Character character)
-        {
-        }
-
         public override State Tick(Character character)
         {
+
             if (character.PlayerIsSighted())
             {
                 return chaseState;
@@ -25,7 +22,7 @@ namespace AF
 
             // Choose the next destination point when the agent gets
             // close to the current one.
-            if (!character.agent.pathPending && character.agent.remainingDistance < 0.5f)
+            if (Vector3.Distance(character.agent.destination, character.agent.transform.position) < character.agent.stoppingDistance)
             {
                 return idleState;
             }

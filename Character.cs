@@ -11,8 +11,9 @@ namespace AF {
     public class Character : MonoBehaviour
     {
         [Header("Stats")]
-        public int health = 100;
-        public int stamina = 60;
+        public float health = 100;
+        public float stamina = 60;
+        public float attackPower = 5;
 
         [Header("Senses")]
         public float rotationSpeed = 1.5f;
@@ -22,6 +23,8 @@ namespace AF {
         public bool isBusy;
         public bool isBlocking;
         public bool isTakingDamage;
+        public bool isRolling;
+        public bool isDead;
 
         [Header("State")]
         public State currentState;
@@ -31,6 +34,7 @@ namespace AF {
         [HideInInspector] public Animator animator => GetComponent<Animator>();
         [HideInInspector] public NavMeshAgent agent => GetComponent<NavMeshAgent>();
         [HideInInspector] public CapsuleCollider capsuleCollider => GetComponent<CapsuleCollider>();
+        [HideInInspector] public Rigidbody rigidbody => GetComponent<Rigidbody>();
         [HideInInspector] public Player player;
 
         // Patrol
@@ -43,7 +47,6 @@ namespace AF {
         protected void Start()
         {
             player = GameObject.FindWithTag("Player").GetComponent<Player>();
-            agent.autoBraking = false;
         }
 
         protected void Update()
@@ -51,6 +54,13 @@ namespace AF {
             isBusy = animator.GetBool("isBusy");
             isBlocking = animator.GetBool("isBlocking");
             isTakingDamage = animator.GetBool("isTakingDamage");
+            isRolling = animator.GetBool("isRolling");
+            isDead = animator.GetBool("isDead");
+
+            if (IsNotAvailable())
+            {
+                return;
+            }
 
             if (currentState != null)
             {
@@ -58,11 +68,6 @@ namespace AF {
 
                 if (nextState != null)
                 {
-                    if (currentState != nextState)
-                    {
-                        nextState.OnEnter(this);
-                    }
-
                     SwitchToNextState(nextState);
                 }
             }
@@ -99,18 +104,44 @@ namespace AF {
             var rotation = Quaternion.LookRotation(lookPos);
 
             transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Time.deltaTime * rotationSpeed);
-
         }
 
-        public virtual void TakeDamage()
+        public virtual void TakeDamage(float amount)
         {
+            if (IsNotAvailable())
+            {
+                return;
+            }
+
             if (isBlocking)
             {
                 player.ApplyKnockback(this.transform.position);
+                PlayBusyAnimation("BlockHit");
                 return;
             }
 
             PlayBusyAnimation("TakeDamage");
+            ObjectPooler.instance.SpawnFromPool("Blood", player.weaponGameObject.transform.position, Quaternion.identity, 1f);
+
+            health -= amount;
+
+            if (health <= 0) {
+
+                Die();
+            }
+        }
+
+        public void Die()
+        {
+            PlayBusyAnimation("Die");
+            StartCoroutine(Destroy());
+        }
+
+        IEnumerator Destroy()
+        {
+            yield return new WaitForSeconds(3);
+
+            Destroy(this.gameObject);
         }
 
         public void PlayBusyAnimation(string animationName)
@@ -130,6 +161,18 @@ namespace AF {
             // Choose the next point in the array as the destination,
             // cycling to the start if necessary.
             destinationPoint = (destinationPoint + 1) % waypoints.Length;
+        }
+
+        public void ApplyKnockback(Vector3 enemyPosition)
+        {
+            Vector3 _moveDirection = transform.position - enemyPosition;
+            _moveDirection.y = 0;
+            rigidbody.AddForce(_moveDirection.normalized * player.impactOnHittinEnemyShield);
+        }
+
+        public bool IsNotAvailable()
+        {
+            return isDead || ParrySystem.instance.parryingOngoing;
         }
     }
 }
