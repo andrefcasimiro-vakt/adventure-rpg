@@ -15,17 +15,17 @@ namespace AF {
         Player player;
         BoxCollider boxCollider => GetComponent<BoxCollider>();
 
+        public AudioClip weaponImpactSfx;
+
+        private void Awake()
+        {
+            player = GameObject.FindWithTag("Player").GetComponent<Player>();
+        }
+
         // Start is called before the first frame update
         void Start()
         {
-            player = GameObject.FindWithTag("Player").GetComponent<Player>();
-            boxCollider.enabled = false;
-        }
-
-        // Update is called once per frame
-        void Update()
-        {
-        
+            Disable();
         }
 
         public void Enable() {
@@ -45,10 +45,15 @@ namespace AF {
 
                 if (enemy != null)
                 {
-                    enemy.TakeDamage(weaponDamage);
+                    enemy.combatAudiosource.PlayOneShot(weaponImpactSfx);
+                    enemy.TakeDamage(weaponDamage, player);
                 }
             }
-            else if (other.gameObject == player.gameObject) { 
+            else if (other.gameObject == player.gameObject)
+            {
+                if (player.isParrying) return;
+
+                player.combatAudiosource.PlayOneShot(weaponImpactSfx);
                 player.TakeDamage(weaponDamage, weaponOwner);
             }
 

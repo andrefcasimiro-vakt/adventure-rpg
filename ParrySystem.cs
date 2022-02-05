@@ -7,18 +7,23 @@ namespace AF
 
     public class ParrySystem : MonoBehaviour
     {
-        public CinemachineVirtualCamera mainCamera;
         public CinemachineVirtualCamera parryCamera;
 
         public static ParrySystem instance;
 
         public bool parryingOngoing = false;
 
-        Character invoker;
+        public AudioClip parrySfx;
+
+        Enemy invoker;
+
+        Player player;
 
         private void Awake()
         {
             instance = this;
+
+            player = GameObject.FindWithTag("Player").GetComponent<Player>();
         }
 
         private void Start()
@@ -34,8 +39,7 @@ namespace AF
 
             if (invoker.receivingParryDamage)
             {
-                invoker.TakeParryDamage(
-                    GameObject.FindWithTag("Player").GetComponent<Player>().weaponGameObject.GetComponent<Hitbox>().weaponCriticalDamage,
+                invoker.TakeParryDamage(player.weaponHitbox.weaponCriticalDamage,
                     invoker.parryPositionBloodFx.position
                 );
 
@@ -48,15 +52,20 @@ namespace AF
             {
                 // Stop parry event
                 Time.timeScale = 1f;
-                mainCamera.gameObject.SetActive(true);
-                parryCamera.gameObject.SetActive(false);
+
+                CameraManager.instance.SwitchToPreviousCamera();
+
                 this.invoker = null;
+
             }
         }
 
-        public void Dispatch(Player player, Character target)
+        public void Dispatch(Player player, Enemy target)
         {
             invoker = target;
+            invoker.animator.SetBool("parryOngoing", true);
+
+            invoker.PlaySfx(invoker.combatAudiosource, parrySfx);
 
             var lookPos = target.transform.position - player.transform.position;
             lookPos.y = 0;
@@ -67,12 +76,10 @@ namespace AF
 
             player.GetComponent<Animator>().Play("Parry");
             invoker.animator.Play("Parried");
-            invoker.animator.SetBool("parryOngoing", true);
 
             Time.timeScale = 0.7f;
 
-            mainCamera.gameObject.SetActive(false);
-            parryCamera.gameObject.SetActive(true);
+            CameraManager.instance.SwitchCamera(this.parryCamera.gameObject);
         }
     }
 

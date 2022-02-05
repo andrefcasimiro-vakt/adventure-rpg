@@ -5,6 +5,6 @@ using UnityEngine;
 namespace AF { 
     public abstract class State : MonoBehaviour
     {
-        public abstract State Tick(Character character);
+        public abstract State Tick(Enemy character);
     }
 }

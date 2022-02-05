@@ -9,7 +9,7 @@ namespace AF
         public ChaseState chaseState;
         public IdleState idleState;
 
-        public override State Tick(Character character)
+        public override State Tick(Enemy character)
         {
 
             if (character.PlayerIsSighted())

@@ -7,7 +7,7 @@ namespace AF {
         public PatrolState patrolState;
         public ChaseState chaseState;
 
-        public override State Tick(Character character)
+        public override State Tick(Enemy character)
         {
             character.animator.CrossFade("Idle", .2f);
 

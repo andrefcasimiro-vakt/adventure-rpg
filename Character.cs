@@ -1,243 +1,239 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.AI;
+﻿using UnityEngine;
+using System.Collections;
 
-namespace AF {
+namespace AF
+{
 
     [RequireComponent(typeof(Animator))]
-    [RequireComponent(typeof(CapsuleCollider))]
-    [RequireComponent(typeof(NavMeshAgent))]
     public class Character : MonoBehaviour
     {
+        public string uuid;
+
         [Header("Stats")]
         public float health = 100;
         public float stamina = 60;
 
         [Header("Combat")]
-        public Hitbox weaponHitbox;
+        public GameObject weapon;
+        [HideInInspector] public Hitbox weaponHitbox;
         public GameObject shield;
-        public State stateTriggeredWhenSeeingPlayer;
-
-        public Transform parryPosition;
-        public Transform parryPositionBloodFx;
-
-
-        [Header("Senses")]
-        public float rotationSpeed = 1.5f;
-        public float sightDistance = 20f;
+        public float impactOnHittinEnemyShield = 50000f;        
 
         [Header("Flags")]
-        public bool isBusy;
-        public bool isBlocking;
-        public bool isTakingDamage;
-        public bool isRolling;
-        public bool isDead;
-        public bool receivingParryDamage;
+        public bool isBlocking = false;
+        public bool isRolling = false;
+        public bool isDead = false;
 
-        [Header("State")]
-        public State currentState;
-        public State nextState;
+        [Header("Sounds")]
+        public float minPitchVariation = 0.8f;
+        public float maxPitchVariation = 1.05f;
+        public AudioSource combatAudiosource;
+        public AudioSource footstepAudioSource;
+        public AudioClip startBlockingSfx;
+        public AudioClip blockKnockbackImpactSfx;
+        public AudioClip clothSfx;
+        public AudioClip weaponSwingSfx;
+        public AudioClip damageSfx;
+        public AudioClip dodgeSfx;
+        public AudioClip dieSfx;
+        public AudioClip groundImpactSfx;
 
         // Components
         [HideInInspector] public Animator animator => GetComponent<Animator>();
-        [HideInInspector] public NavMeshAgent agent => GetComponent<NavMeshAgent>();
-        [HideInInspector] public CapsuleCollider capsuleCollider => GetComponent<CapsuleCollider>();
         [HideInInspector] public Rigidbody rigidbody => GetComponent<Rigidbody>();
-        [HideInInspector] public Player player;
+        [HideInInspector] public CapsuleCollider capsuleCollider => GetComponent<CapsuleCollider>();
 
-        // Patrol
-        [Header("Patrolling")]
-        public Transform[] waypoints;
-        public float restingTimeOnWaypoint = 2f;
-        public int destinationPoint = 0;
-        [HideInInspector] public float currentTimeOnWaypoint = 0f;
+        // Ground
+        float distanceToTheGround;
+
+        private void Awake()
+        {
+            uuid = this.gameObject.name;
+        }
 
         protected void Start()
         {
-            player = GameObject.FindWithTag("Player").GetComponent<Player>();
-
             if (shield != null)
             {
                 shield.SetActive(false);
             }
+
+            if (weapon != null)
+            {
+                weaponHitbox = weapon.GetComponent<Hitbox>();
+            }
+
+            distanceToTheGround = capsuleCollider.bounds.extents.y;
         }
 
         protected void Update()
         {
-            isBusy = animator.GetBool("isBusy");
             isBlocking = animator.GetBool("isBlocking");
-            isTakingDamage = animator.GetBool("isTakingDamage");
             isRolling = animator.GetBool("isRolling");
             isDead = animator.GetBool("isDead");
-            receivingParryDamage = animator.GetBool("receivingParryDamage");
 
             if (shield != null)
             {
                 shield.SetActive(isBlocking);
             }
 
+
             if (IsNotAvailable())
             {
                 return;
             }
 
-            if (currentState != null)
-            {
-                State nextState = currentState.Tick(this);
-
-                if (nextState != null)
-                {
-                    SwitchToNextState(nextState);
-                }
-            }
         }
 
-        public void SwitchToNextState(State state)
+        public virtual void TakeDamage(float amount, Character target)
         {
-            currentState = state;
+
         }
 
-        public bool PlayerIsSighted()
+
+        #region Physics
+
+        public void FaceTarget(Transform target, float rotationSpeed)
         {
-            if (Vector3.Distance(transform.position, player.transform.position) > sightDistance)
-            {
-                return false;
-            }
-
-            Vector3 playerDirection = transform.position - player.transform.position;
-            float angle = Vector3.Angle(transform.forward, playerDirection);
-
-            if (Mathf.Abs(angle) > 90 && Mathf.Abs(angle) < 270)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        public void FacePlayer(float rotationSpeed)
-        {
-
-            var lookPos = player.transform.position - transform.position;
+            var lookPos = target.position - transform.position;
             lookPos.y = 0;
             var rotation = Quaternion.LookRotation(lookPos);
 
             transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Time.deltaTime * rotationSpeed);
         }
 
-        public void TakeParryDamage(float amount, Vector3 bloodFxPos)
+        public void ApplyKnockback(Vector3 targetPosition)
         {
-            ObjectPooler.instance.SpawnFromPool("Blood", bloodFxPos, Quaternion.identity, 1f);
-
-            health -= amount;
-
-            if (health <= 0)
-            {
-
-                DieAndCancelParrySystem();
-
-            }
-        }
-
-        public virtual void TakeDamage(float amount)
-        {
-            if (IsNotAvailable())
-            {
-                return;
-            }
-
-            if (isBlocking)
-            {
-                player.ApplyKnockback(this.transform.position);
-                PlayBusyAnimation("BlockHit");
-                return;
-            }
-
-            PlayBusyAnimation("TakeDamage");
-            ObjectPooler.instance.SpawnFromPool("Blood", player.weaponGameObject.transform.position, Quaternion.identity, 1f);
-
-            health -= amount;
-
-            if (health <= 0) {
-
-                Die();
-            }
-        }
-
-        public void Die()
-        {
-            PlayBusyAnimation("Die");
-            StartCoroutine(Destroy());
-        }
-
-        public void DieAndCancelParrySystem()
-        {
-            PlayBusyAnimation("DieAndCancelParrySystem");
-            StartCoroutine(Destroy());
-        }
-
-        IEnumerator Destroy()
-        {
-            yield return new WaitForSeconds(3);
-
-            Destroy(this.gameObject);
-        }
-
-        public void PlayBusyAnimation(string animationName)
-        {
-            animator.CrossFade(animationName, 0.05f);
-            animator.SetBool("isBusy", true);
-        }
+            PlaySfx(combatAudiosource, blockKnockbackImpactSfx);
 
 
-        public void GotoNextPoint()
-        {
-            currentTimeOnWaypoint = 0;
-
-            // Set the agent to go to the currently selected destination.
-            agent.destination = waypoints[destinationPoint].position;
-
-            // Choose the next point in the array as the destination,
-            // cycling to the start if necessary.
-            destinationPoint = (destinationPoint + 1) % waypoints.Length;
-        }
-
-        public void ApplyKnockback(Vector3 enemyPosition)
-        {
-            Vector3 _moveDirection = transform.position - enemyPosition;
+            Vector3 _moveDirection = transform.position - targetPosition;
             _moveDirection.y = 0;
-            rigidbody.AddForce(_moveDirection.normalized * player.impactOnHittinEnemyShield);
+            rigidbody.AddForce(_moveDirection.normalized * impactOnHittinEnemyShield);
         }
+        #endregion
 
-        public bool IsNotAvailable()
-        {
-            return isDead || ParrySystem.instance.parryingOngoing;
-        }
+        #region Animation Events
 
         public void ActivateHitbox()
         {
-            player.isParrying = false;
-
             weaponHitbox.Enable();
+
+            // Usually the weapon swing matches the hitbox activation
+            PlaySfx(combatAudiosource, weaponSwingSfx);
         }
+
         public void DeactivateHitbox()
         {
             weaponHitbox.Disable();
         }
 
-        public void DisableParry()
+        public void PlayFootstep()
         {
-            Debug.Log("Disable parry");
-
-            if (player.isParrying)
+            string groundTag = GetGroundTag();
+            if (groundTag == null)
             {
-                Debug.Log("Player was parrying!");
-
-                ParrySystem.instance.Dispatch(player, this);
+                return;
             }
 
-            player.isParrying = false;
+            AudioClip clip = FootstepSystem.instance.GetFootstepClip(groundTag);
+            PlaySfx(footstepAudioSource, clip);
         }
+
+        public void PlayDamage()
+        {
+            PlaySfx(combatAudiosource, damageSfx);
+        }
+
+        // Impact of the enemy when he hits the player's shield
+        public void PlayParriedImpact()
+        {
+            PlaySfx(combatAudiosource, blockKnockbackImpactSfx);
+        }
+
+        // Impact of the enemy when receiving critical player attack that follows the parry
+        public void PlayParryDamage()
+        {
+            PlaySfx(combatAudiosource, damageSfx);
+        }
+
+        // Swing of player weapon
+        public void PlayParrySwing()
+        {
+            PlaySfx(combatAudiosource, weaponSwingSfx);
+        }
+
+        public void PlayDodge()
+        {
+            PlaySfx(combatAudiosource, dodgeSfx);
+
+        }
+
+        public void PlayDeath()
+        {
+            PlaySfx(combatAudiosource, dieSfx);
+        }
+
+        public void PlayGroundImpact()
+        {
+            PlaySfx(combatAudiosource, groundImpactSfx);
+        }
+
+        public void PlayCloth()
+        {
+            PlaySfx(combatAudiosource, clothSfx);
+        }
+
+        #endregion
+
+        #region Sound
+        public void PlaySfx(AudioSource audioSource, AudioClip clip)
+        {
+            float pitch = Random.Range(minPitchVariation, maxPitchVariation);
+            audioSource.pitch = pitch;
+
+            audioSource.PlayOneShot(clip);
+        }
+        #endregion
+
+
+        #region Boolean Flags
+        public bool IsNotAvailable()
+        {
+            return isDead || ParrySystem.instance.parryingOngoing || MainMenu.instance.isOpen;
+        }
+
+        public bool IsGrounded()
+        {
+            return Physics.Raycast(transform.position, -Vector3.up, distanceToTheGround + 0.1f);
+        }
+        #endregion
+
+        public string GetGroundTag()
+        {
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position, -Vector3.up, out hit))
+            {
+                if (hit.transform != null)
+                {
+                    return hit.transform.gameObject.tag;
+                }
+            }
+
+            return null;
+        }
+
+        #region
+
+        public void Revive(float amountOfHealth)
+        {
+            health = amountOfHealth;
+            animator.SetBool("isDead", false);
+            this.gameObject.SetActive(true);
+        }
+
+        #endregion
+
     }
+
 }

@@ -18,10 +18,8 @@ namespace AF
         public float maxDodgeChance = 1f;
         public float dodgeChance = 0.5f;
 
-        public override State Tick(Character character)
+        public override State Tick(Enemy character)
         {
-            character.FacePlayer(character.rotationSpeed);
-
             if (character.player.isDead)
             {
                 return patrolState;
@@ -30,6 +28,19 @@ namespace AF
             if (character.isBusy)
             {
                 return this;
+            }
+
+            if (character.isDead)
+            {
+                return this;
+            }
+
+            character.FaceTarget(character.player.transform, character.rotationSpeed);
+
+            // if dead or parrying or main menu open
+            if (character.IsNotAvailable())
+            {
+                return patrolState;
             }
 
             if (IsPlayerFarAway(character))
@@ -50,7 +61,7 @@ namespace AF
             return AttackPlayer(character);
         }
 
-        public State AttackPlayer(Character character)
+        public State AttackPlayer(Enemy character)
         {
             float attackDice = Random.Range(0, 1f);
 
@@ -71,7 +82,7 @@ namespace AF
             return this;
         }
 
-        public State ResponseToPlayer(Character character)
+        public State ResponseToPlayer(Enemy character)
         {
             if (character.player.isAttacking)
             {
@@ -79,7 +90,7 @@ namespace AF
                 float blockDice = Random.Range(minBlockChance, maxBlockChance);
                 if (blockDice >= blockChance)
                 {
-                    character.FacePlayer(100f);
+                    character.FaceTarget(character.player.transform, 100f);
                     character.PlayBusyAnimation("Block");
                     return this;
                 }
@@ -88,7 +99,7 @@ namespace AF
                 float dodgeDice = Random.Range(minDodgeChange, maxDodgeChance);
                 if (dodgeDice >= dodgeChance)
                 {
-                    character.FacePlayer(100f);
+                    character.FaceTarget(character.player.transform, 100f);
 
                     float dodgeClipDice = Random.Range(0f, 1f);
                     if (dodgeClipDice > 0.5f)
@@ -111,7 +122,7 @@ namespace AF
         }
 
 
-        public bool IsPlayerFarAway(Character character)
+        public bool IsPlayerFarAway(Enemy character)
         {
             return Vector3.Distance(character.agent.transform.position, character.player.transform.position) > character.agent.stoppingDistance + 0.5f;  
         }

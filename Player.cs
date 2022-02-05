@@ -4,15 +4,11 @@ using System.Collections;
 namespace AF
 {
 
-    public class Player : MonoBehaviour
+    public class Player : Character
     {
 
         InputActions inputActions;
-
         private Vector3 moveDirection;
-
-        protected Animator animator => GetComponent<Animator>();
-        protected Rigidbody rigidbody => GetComponent<Rigidbody>();
 
         [Header("Movement")]
         public float walkSpeed = 6;
@@ -20,26 +16,14 @@ namespace AF
         public float rotationSpeed = 8;
 
         [Header("Combat")]
-        public GameObject weaponGameObject;
-        Hitbox weaponHitbox;
-        public GameObject shieldGameObject;
         private int attackComboIndex = 0;
-        public float impactOnHittinEnemyShield = 50000f;
-
-        [Header("Stats")]
-        public float health = 100;
-        public float stamina = 60;
 
         [Header("Flags")]
-        public bool isSprinting = false;
-        public bool isRolling = false;
         public bool isAttacking = false;
-        public bool isGuarding = false;
         public bool isParrying = false;
-        public bool isDead = false;
+        public bool isSprinting = false;
 
         public LayerMask characterLayer;
-
 
         void OnEnable()
         {
@@ -67,28 +51,33 @@ namespace AF
 
             inputActions.PlayerActions.Guard.performed += ctx => Guard();
             inputActions.PlayerActions.Guard.canceled += ctx => StopGuard();
+
+            // UI
+            inputActions.PlayerActions.MainMenu.performed += ctx => MainMenu.instance.Open();
         }
 
         private void Start()
         {
-            if (shieldGameObject != null)
-            {
-                shieldGameObject.SetActive(false);
-            }
-
-            if (weaponGameObject != null)
-            {
-                weaponHitbox = weaponGameObject.GetComponent<Hitbox>();
-            }
+            base.Start();
         }
+
+
 
         protected void Update()
         {
+            base.Update();
+
             isRolling = animator.GetBool("isRolling");
             isAttacking = animator.GetBool("isAttacking");
-            isGuarding = animator.GetBool("isGuarding");
+            isBlocking = animator.GetBool("isBlocking");
             isDead = animator.GetBool("isDead");
+            isParrying = animator.GetBool("isParrying");
 
+        }
+
+
+        protected void FixedUpdate()
+        {
             if (IsNotAvailable())
             {
                 return;
@@ -96,6 +85,51 @@ namespace AF
 
 
             HandleMovement();
+
+
+            if (isSprinting)
+            {
+                if (moveDirection.magnitude <= 0)
+                {
+                    isSprinting = false;
+                }
+                else
+                {
+                    // Handle issues with floating values on limit (causing footstep sounds to play overlapped)
+                    if (animator.GetFloat("movementSpeed") >= 0.95f)
+                    {
+                        animator.SetFloat("movementSpeed", 1f);
+                    }
+                    else
+                    {
+                        animator.SetFloat("movementSpeed", 1f, 0.05f, Time.fixedDeltaTime);
+                    }
+                }
+            }
+            else if (moveDirection.magnitude == 0)
+            {
+                // Handle issues with floating values on limit (causing footstep sounds to play overlapped)
+                if (animator.GetFloat("movementSpeed") <= 0.05f)
+                {
+                    animator.SetFloat("movementSpeed", 0f);
+                }
+                else
+                {
+                    animator.SetFloat("movementSpeed", 0f, 0.05f, Time.fixedDeltaTime);
+                }
+            }
+            else
+            {
+                // Handle issues with floating values on limit (causing footstep sounds to play overlapped)
+                if (animator.GetFloat("movementSpeed") <= 0.55f || animator.GetFloat("movementSpeed") >= 0.45f)
+                {
+                    animator.SetFloat("movementSpeed", 0.5f);
+                }
+                else
+                {
+                    animator.SetFloat("movementSpeed", 0.5f, 0.05f, Time.fixedDeltaTime);
+                }
+            }
         }
 
 
@@ -113,7 +147,7 @@ namespace AF
 
             var rotation = Quaternion.LookRotation(targetVector);
 
-            if (isGuarding)
+            if (isBlocking)
             {
                 if (isSprinting)
                 {
@@ -122,7 +156,7 @@ namespace AF
                 else
                 {
                     // Lock on to target logic
-                    Character closestCharacter = shieldGameObject.GetComponent<Shield>().FindClosestCharacter(this.transform.position);
+                    Character closestCharacter = shield.GetComponent<Shield>().FindClosestCharacter(this.transform.position);
 
                     if (closestCharacter != null)
                     {
@@ -139,23 +173,9 @@ namespace AF
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, rotation, rotationSpeed);
             }
 
-            if (moveDirection.magnitude == 0)
-            {
-                animator.SetFloat("movementSpeed", 0f, 0.05f, Time.deltaTime);
-                return;
-            }
-
-            var speed = (isSprinting ? runSpeed : walkSpeed) * Time.deltaTime;
+            var speed = (isSprinting ? runSpeed : walkSpeed) * Time.fixedDeltaTime;
             var targetPosition = transform.position + targetVector * speed;
             transform.position = targetPosition;
-
-            if (isSprinting)
-            {
-                animator.SetFloat("movementSpeed", 1f, 0.05f, Time.deltaTime);
-                return;
-            }
-
-            animator.SetFloat("movementSpeed", 0.5f, 0.05f, Time.deltaTime);
         }
 
         protected void HandleRoll()
@@ -170,7 +190,7 @@ namespace AF
                 return;
             }
 
-            if (isGuarding) { 
+            if (isBlocking) { 
                 StopGuard();
             }
 
@@ -198,7 +218,7 @@ namespace AF
                 return;
             }
 
-            if (isGuarding)
+            if (isBlocking)
             {
                 StopGuard();
             }
@@ -231,28 +251,33 @@ namespace AF
                 return;
             }
 
-            animator.SetBool("isGuarding", true);
-
-            if (shieldGameObject != null)
+            if (isSprinting)
             {
-                shieldGameObject.SetActive(true);
+                return;
             }
 
-            isParrying = true;
+            animator.SetBool("isBlocking", true);
+            animator.SetBool("isParrying", true);
+
+            combatAudiosource.PlayOneShot(startBlockingSfx);
+
+            if (shield != null)
+            {
+                shield.SetActive(true);
+            }
         }
+
         protected void StopGuard()
         {
-            animator.SetBool("isGuarding", false);
+            animator.SetBool("isBlocking", false);
 
-            if (shieldGameObject != null)
+            if (shield != null)
             {
-                shieldGameObject.SetActive(false);
+                shield.SetActive(false);
             }
-
-            isParrying = false;
         }
 
-        public void TakeDamage(float amount, Character enemy)
+        public override void TakeDamage(float amount, Character enemy)
         {
             if (IsNotAvailable())
             {
@@ -264,22 +289,28 @@ namespace AF
                 return;
             }
 
-            if (isGuarding)
+            // Check if player is facing enemy, other wise ignore shield
+            bool playerFacingEnemy = Vector3.Angle(transform.forward * -1, enemy.transform.forward) <= 90f;
+            if (isBlocking && playerFacingEnemy)
             {
+                FaceTarget(enemy.transform, 100f);
                 enemy.ApplyKnockback(this.transform.position);
                 animator.Play("BlockHit");
                 return;
             }
 
-            animator.Play("TakeDamage");
             ObjectPooler.instance.SpawnFromPool("Blood", enemy.weaponHitbox.transform.position, Quaternion.identity, 1f);
-
             health -= amount;
 
             if (health <= 0)
             {
 
                 Die();
+            }
+            else
+            {
+                animator.Play("TakeDa m age");
+                PlayDamage();
             }
         }
         #endregion
@@ -290,34 +321,5 @@ namespace AF
             animator.Play("Die");
         }
 
-        #region Physics
-        public void ApplyKnockback(Vector3 enemyPosition)
-        {
-            Vector3 _moveDirection = transform.position - enemyPosition;
-            _moveDirection.y = 0;
-            rigidbody.AddForce(_moveDirection.normalized * impactOnHittinEnemyShield);
-        }
-        #endregion
-
-
-        #region
-        /// <summary>
-        /// Animation Event Function. Handles the hitbox activation
-        /// </summary>
-        public void ActivateHitbox()
-        {
-            weaponHitbox.Enable();
-        }
-        public void DeactivateHitbox()
-        {
-            weaponHitbox.Disable();
-        }
-        #endregion
-
-
-        public bool IsNotAvailable()
-        {
-            return isDead || ParrySystem.instance.parryingOngoing;
-        }
     }
 }
