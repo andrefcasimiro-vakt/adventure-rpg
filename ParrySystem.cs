@@ -37,16 +37,16 @@ namespace AF
                 return;
             }
 
-            if (invoker.receivingParryDamage)
-            {
-                invoker.TakeParryDamage(player.weaponHitbox.weaponCriticalDamage,
-                    invoker.parryPositionBloodFx.position
-                );
+            //if (invoker.receivingParryDamage)
+            //{
+            //    invoker.TakeParryDamage(player.weapon.criticalAttackPower,
+            //        invoker.parryPositionBloodFx.position
+            //    );
 
-                invoker.animator.SetBool("receivingParryDamage", false);
-            }
+            //    invoker.animator.SetBool("receivingParryDamage", false);
+            //}
 
-            parryingOngoing = invoker.animator.GetBool("parryOngoing");
+            //parryingOngoing = invoker.animator.GetBool("parryOngoing");
 
             if (parryingOngoing == false)
             {
@@ -62,20 +62,20 @@ namespace AF
 
         public void Dispatch(Player player, Enemy target)
         {
-            invoker = target;
-            invoker.animator.SetBool("parryOngoing", true);
+            //invoker = target;
+            //invoker.animator.SetBool("parryOngoing", true);
 
-            invoker.PlaySfx(invoker.combatAudiosource, parrySfx);
+            //invoker.PlaySfx(invoker.combatAudiosource, parrySfx);
 
-            var lookPos = target.transform.position - player.transform.position;
-            lookPos.y = 0;
-            var rotation = Quaternion.LookRotation(lookPos);
-            player.transform.rotation = rotation;
+            //var lookPos = target.transform.position - player.transform.position;
+            //lookPos.y = 0;
+            //var rotation = Quaternion.LookRotation(lookPos);
+            //player.transform.rotation = rotation;
 
-            player.transform.position = target.parryPosition.position;
+            //player.transform.position = target.parryPosition.position;
 
-            player.GetComponent<Animator>().Play("Parry");
-            invoker.animator.Play("Parried");
+            //player.GetComponent<Animator>().Play("Parry");
+            //invoker.animator.Play("Parried");
 
             Time.timeScale = 0.7f;
 

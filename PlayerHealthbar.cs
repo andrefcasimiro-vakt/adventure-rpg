@@ -21,7 +21,7 @@ namespace AF
         // Update is called once per frame
         void Update()
         {
-            fillImage.fillAmount = player.health * 0.01f;
+            fillImage.fillAmount = player.healthbox.health * 0.01f;
         }
     }
 

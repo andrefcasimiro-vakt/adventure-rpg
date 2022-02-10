@@ -4,26 +4,38 @@ using System.Collections;
 namespace AF
 {
 
+    [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(CapsuleCollider))]
+    [RequireComponent(typeof(Animator))]
     public class Player : Character
     {
+        public readonly int hashMovementSpeed = Animator.StringToHash("movementSpeed");
 
-        InputActions inputActions;
-        private Vector3 moveDirection;
 
         [Header("Movement")]
         public float walkSpeed = 6;
         public float runSpeed = 9;
         public float rotationSpeed = 8;
-
-        [Header("Combat")]
-        private int attackComboIndex = 0;
+        Vector3 moveDirection;
 
         [Header("Flags")]
         public bool isAttacking = false;
         public bool isParrying = false;
         public bool isSprinting = false;
+        public bool isBlocking = false;
+        public bool isRolling = false;
+        public bool isDead = false;
 
-        public LayerMask characterLayer;
+        [Header("References")]
+        public Transform headTransform;
+
+        [HideInInspector] public Animator animator => GetComponent<Animator>();
+        [HideInInspector] public Rigidbody rigidbody => GetComponent<Rigidbody>();
+        [HideInInspector] public CapsuleCollider capsuleCollider => GetComponent<CapsuleCollider>();
+
+        InputActions inputActions;
+
+        [HideInInspector] public PlayerCombatManager playerCombatManager => GetComponent<PlayerCombatManager>();
 
         void OnEnable()
         {
@@ -32,6 +44,8 @@ namespace AF
 
         void Awake()
         {
+            base.Awake();
+
             if (inputActions == null)
             {
                 inputActions = new InputActions();
@@ -47,10 +61,10 @@ namespace AF
             inputActions.PlayerActions.Roll.performed += ctx => HandleRoll();
 
             // Combat Input
-            inputActions.PlayerActions.Attack.performed += ctx => HandleAttack();
+            inputActions.PlayerActions.Attack.performed += ctx => playerCombatManager.HandleAttack();
 
-            inputActions.PlayerActions.Guard.performed += ctx => Guard();
-            inputActions.PlayerActions.Guard.canceled += ctx => StopGuard();
+            inputActions.PlayerActions.Guard.performed += ctx => playerCombatManager.Guard();
+            inputActions.PlayerActions.Guard.canceled += ctx => playerCombatManager.StopGuard();
 
             // UI
             inputActions.PlayerActions.MainMenu.performed += ctx => MainMenu.instance.Open();
@@ -58,21 +72,26 @@ namespace AF
 
         private void Start()
         {
-            base.Start();
+            if (inventory.shield != null)
+            {
+                inventory.shield.SetActive(false);
+            }
         }
 
 
 
         protected void Update()
         {
-            base.Update();
-
+            isBlocking = animator.GetBool("isBlocking");
             isRolling = animator.GetBool("isRolling");
             isAttacking = animator.GetBool("isAttacking");
-            isBlocking = animator.GetBool("isBlocking");
             isDead = animator.GetBool("isDead");
             isParrying = animator.GetBool("isParrying");
 
+            if (inventory.shield != null)
+            {
+                inventory.shield.SetActive(isBlocking);
+            }
         }
 
 
@@ -83,9 +102,7 @@ namespace AF
                 return;
             }
 
-
             HandleMovement();
-
 
             if (isSprinting)
             {
@@ -96,38 +113,38 @@ namespace AF
                 else
                 {
                     // Handle issues with floating values on limit (causing footstep sounds to play overlapped)
-                    if (animator.GetFloat("movementSpeed") >= 0.95f)
+                    if (animator.GetFloat(hashMovementSpeed) >= 0.95f)
                     {
-                        animator.SetFloat("movementSpeed", 1f);
+                        animator.SetFloat(hashMovementSpeed, 1f);
                     }
                     else
                     {
-                        animator.SetFloat("movementSpeed", 1f, 0.05f, Time.fixedDeltaTime);
+                        animator.SetFloat(hashMovementSpeed, 1f, 0.05f, Time.fixedDeltaTime);
                     }
                 }
             }
             else if (moveDirection.magnitude == 0)
             {
                 // Handle issues with floating values on limit (causing footstep sounds to play overlapped)
-                if (animator.GetFloat("movementSpeed") <= 0.05f)
+                if (animator.GetFloat(hashMovementSpeed) <= 0.05f)
                 {
-                    animator.SetFloat("movementSpeed", 0f);
+                    animator.SetFloat(hashMovementSpeed, 0f);
                 }
                 else
                 {
-                    animator.SetFloat("movementSpeed", 0f, 0.05f, Time.fixedDeltaTime);
+                    animator.SetFloat(hashMovementSpeed, 0f, 0.05f, Time.fixedDeltaTime);
                 }
             }
             else
             {
                 // Handle issues with floating values on limit (causing footstep sounds to play overlapped)
-                if (animator.GetFloat("movementSpeed") <= 0.55f || animator.GetFloat("movementSpeed") >= 0.45f)
+                if (animator.GetFloat(hashMovementSpeed) <= 0.55f || animator.GetFloat(hashMovementSpeed) >= 0.45f)
                 {
-                    animator.SetFloat("movementSpeed", 0.5f);
+                    animator.SetFloat(hashMovementSpeed, 0.5f);
                 }
                 else
                 {
-                    animator.SetFloat("movementSpeed", 0.5f, 0.05f, Time.fixedDeltaTime);
+                    animator.SetFloat(hashMovementSpeed, 0.5f, 0.05f, Time.fixedDeltaTime);
                 }
             }
         }
@@ -143,7 +160,7 @@ namespace AF
                 return;
             }
 
-            Vector3 targetVector = new Vector3(moveDirection.x, 0, moveDirection.y);
+            Vector3 targetVector = GetMoveDirection();
 
             var rotation = Quaternion.LookRotation(targetVector);
 
@@ -151,12 +168,12 @@ namespace AF
             {
                 if (isSprinting)
                 {
-                    StopGuard();
+                    playerCombatManager.StopGuard();
                 }
                 else
                 {
                     // Lock on to target logic
-                    Character closestCharacter = shield.GetComponent<Shield>().FindClosestCharacter(this.transform.position);
+                    Character closestCharacter = inventory.shield.GetComponent<Shield>().FindClosestCharacter(this.transform.position);
 
                     if (closestCharacter != null)
                     {
@@ -180,22 +197,17 @@ namespace AF
 
         protected void HandleRoll()
         {
-            if (IsNotAvailable())
+            if (IsNotAvailable() || isAttacking)
             {
                 return;
             }
 
-            if (isAttacking)
-            {
-                return;
+            if (isBlocking)
+            { 
+                playerCombatManager.StopGuard();
             }
 
-            if (isBlocking) { 
-                StopGuard();
-            }
-
-            Vector3 targetVector = new Vector3(moveDirection.x, 0, moveDirection.y);
-            var rotation = Quaternion.LookRotation(targetVector);
+            var rotation = Quaternion.LookRotation(GetMoveDirection());
 
             if (moveDirection.magnitude != 0) { 
                 transform.rotation = rotation;
@@ -205,120 +217,19 @@ namespace AF
         }
         #endregion
 
-        #region Combat
-        protected void HandleAttack()
+        
+        public Vector3 GetMoveDirection()
         {
-            if (IsNotAvailable())
-            {
-                return;
-            }
+            bool cameraInverted = Camera.main.transform.forward.z <= 0;
 
-            if (isAttacking)
-            {
-                return;
-            }
-
-            if (isBlocking)
-            {
-                StopGuard();
-            }
-
-            if (attackComboIndex > 2)
-            {
-                attackComboIndex = 0;
-            }
-
-            if (attackComboIndex == 0)
-            {
-                animator.CrossFade("Attack1", 0.05f);
-            }
-            else if (attackComboIndex == 1)
-            {
-                animator.CrossFade("Attack2", 0.05f);
-            }
-            else
-            {
-                animator.CrossFade("Attack3", 0.05f);
-            }
-
-            attackComboIndex++;
+            return cameraInverted
+                ? new Vector3(moveDirection.x * -1, 0, moveDirection.y * -1)
+                : new Vector3(moveDirection.x, 0, moveDirection.y);
         }
 
-        protected void Guard()
+        public bool IsNotAvailable()
         {
-            if (IsNotAvailable())
-            {
-                return;
-            }
-
-            if (isSprinting)
-            {
-                return;
-            }
-
-            animator.SetBool("isBlocking", true);
-            animator.SetBool("isParrying", true);
-
-            combatAudiosource.PlayOneShot(startBlockingSfx);
-
-            if (shield != null)
-            {
-                shield.SetActive(true);
-            }
-        }
-
-        protected void StopGuard()
-        {
-            animator.SetBool("isBlocking", false);
-
-            if (shield != null)
-            {
-                shield.SetActive(false);
-            }
-        }
-
-        public override void TakeDamage(float amount, Character enemy)
-        {
-            if (IsNotAvailable())
-            {
-                return;
-            }
-
-            if (isRolling)
-            {
-                return;
-            }
-
-            // Check if player is facing enemy, other wise ignore shield
-            bool playerFacingEnemy = Vector3.Angle(transform.forward * -1, enemy.transform.forward) <= 90f;
-            if (isBlocking && playerFacingEnemy)
-            {
-                FaceTarget(enemy.transform, 100f);
-                enemy.ApplyKnockback(this.transform.position);
-                animator.Play("BlockHit");
-                return;
-            }
-
-            ObjectPooler.instance.SpawnFromPool("Blood", enemy.weaponHitbox.transform.position, Quaternion.identity, 1f);
-            health -= amount;
-
-            if (health <= 0)
-            {
-
-                Die();
-            }
-            else
-            {
-                animator.Play("TakeDa m age");
-                PlayDamage();
-            }
-        }
-        #endregion
-
-
-        public void Die()
-        {
-            animator.Play("Die");
+            return isDead || MainMenu.instance.isOpen;
         }
 
     }

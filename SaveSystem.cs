@@ -14,8 +14,6 @@ namespace AF {
         public Quaternion rotation;
         public float health;
 
-        public string state;
-
         public bool isActive;
     }
 
@@ -90,19 +88,9 @@ namespace AF {
                 CharacterData characterData = new CharacterData();
                 characterData.position = c.transform.position;
                 characterData.rotation = c.transform.rotation;
-                characterData.health = c.health;
+                characterData.health = c.healthbox.health;
                 characterData.uuid = c.uuid;
                 characterData.isActive = c.gameObject.activeSelf;
-
-                Enemy enemy = c as Enemy;
-                if (enemy != null)
-                {
-                    characterData.state = enemy.currentState.ToString();
-                }
-                else
-                {
-                    characterData.state = "";
-                }
 
                 charactersData.Add(characterData);
             }
@@ -137,40 +125,19 @@ namespace AF {
 
                     if (charData.isActive)
                     {
-                        c.Revive(charData.health);
+                        c.healthbox.health = charData.health;
+
+                        if (c.healthbox.health <= 0)
+                        {
+                            c.healthbox.Die();
+                        }
                     }
                     else
                     {
                         c.gameObject.SetActive(false);
                     }
 
-                    if (charData.state != "")
-                    {
-                        Enemy enemy = c as Enemy;
-                        if (enemy != null)
-                        {
-                            if (charData.state.Contains("PatrolState"))
-                            {
-                                PatrolState state = enemy.GetComponentInChildren<PatrolState>();
-                                enemy.SwitchToNextState(state);
-                            }
-                            else if (charData.state.Contains("CombatState"))
-                            {
-                                CombatState state = enemy.GetComponentInChildren<CombatState>();
-                                enemy.SwitchToNextState(state);
-                            }
-                            else if (charData.state.Contains("ChaseState"))
-                            {
-                                ChaseState state = enemy.GetComponentInChildren<ChaseState>();
-                                enemy.SwitchToNextState(state);
-                            }
-                            else if (charData.state.Contains("IdleState"))
-                            {
-                                IdleState state = enemy.GetComponentInChildren<IdleState>();
-                                enemy.SwitchToNextState(state);
-                            }
-                        }
-                    }
+                    
                 }
             }
 
