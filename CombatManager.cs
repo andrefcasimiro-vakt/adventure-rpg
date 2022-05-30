@@ -4,7 +4,8 @@ using System.Collections;
 namespace AF
 {
 
-    [RequireComponent(typeof(Inventory))]
+    [RequireComponent(typeof(Animator))]
+    [RequireComponent(typeof(InventoryManager))]
     public class CombatManager : MonoBehaviour
     {
         public AudioSource combatAudioSource;
@@ -15,17 +16,17 @@ namespace AF
         public AudioClip groundImpactSfx;
         public AudioClip clothSfx;
 
-        Inventory inventory => GetComponent<Inventory>();
+        InventoryManager inventory => GetComponent<InventoryManager>();
 
         /// <summary>
         /// Animation Event
         /// </summary>
         public void ActivateHitbox()
         {
-            inventory.meleeWeapon.EnableHitbox();
+            // inventory.meleeWeapon.EnableHitbox();
 
             // Usually the weapon swing matches the hitbox activation
-            PlaySfx(weaponSwingSfx);
+            Utils.PlaySfx(combatAudioSource, weaponSwingSfx);
         }
 
         /// <summary>
@@ -33,24 +34,15 @@ namespace AF
         /// </summary>
         public void DeactivateHitbox()
         {
-            inventory.meleeWeapon.GetComponent<Weapon>().DisableHitbox();
+            // inventory.meleeWeapon.GetComponent<Weapon>().DisableHitbox();
         }
-
-        /// <summary>
-        /// Animation Event
-        /// </summary>
-        public void PlayDodge()
-        {
-            PlaySfx(dodgeSfx);
-        }
-
 
         /// <summary>
         /// Animation Event
         /// </summary>
         public void PlayGroundImpact()
         {
-            PlaySfx(groundImpactSfx);
+            Utils.PlaySfx(combatAudioSource, groundImpactSfx);
         }
 
         /// <summary>
@@ -58,24 +50,7 @@ namespace AF
         /// </summary>
         public void PlayCloth()
         {
-            PlaySfx(clothSfx);
-        }
-
-        /// <summary>
-        /// Animation Event
-        /// </summary>
-        public void PlayProjectileSound()
-        {
-            Projectile projectile = inventory.projectilePrefab.GetComponent<Projectile>();
-            PlaySfx(projectile.projectileSfx);
-        }
-
-        protected void PlaySfx(AudioClip clip)
-        {
-            float pitch = Random.Range(0.95f, 1.05f);
-            combatAudioSource.pitch = pitch;
-
-            combatAudioSource.PlayOneShot(clip);
+            Utils.PlaySfx(combatAudioSource, clothSfx);
         }
 
         /// <summary>
@@ -87,8 +62,10 @@ namespace AF
 
             Utils.FaceTarget(this.transform, player.transform);
 
-            GameObject projectile = Instantiate(inventory.projectilePrefab.gameObject, inventory.rangeWeapon.transform.position, Quaternion.identity);
-            projectile.GetComponent<Projectile>().Shoot(player.headTransform);
+            GameObject projectileInstance = Instantiate(inventory.projectilePrefab.gameObject, inventory.rangeWeapon.transform.position, Quaternion.identity);
+            Projectile projectile = projectileInstance.GetComponent<Projectile>();
+            Utils.PlaySfx(combatAudioSource, projectile.projectileSfx);
+            projectile.Shoot(player.headTransform);
         }
     }
 

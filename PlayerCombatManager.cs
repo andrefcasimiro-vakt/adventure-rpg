@@ -11,11 +11,11 @@ namespace AF
         [Header("Combat Sounds")]
         public AudioClip startBlockingSfx;
 
-        int attackComboIndex = 0;
-
-
         Animator animator => GetComponent<Animator>();
         Player player => GetComponent<Player>();
+        ParryManager parryManager => GetComponent<ParryManager>();
+
+        int attackComboIndex = 0;
 
         public void HandleAttack()
         {
@@ -36,15 +36,15 @@ namespace AF
 
             if (attackComboIndex == 0)
             {
-                animator.CrossFade("Attack1", 0.05f);
+                animator.CrossFade(player.hashAttacking1, 0.05f);
             }
             else if (attackComboIndex == 1)
             {
-                animator.CrossFade("Attack2", 0.05f);
+                animator.CrossFade(player.hashAttacking2, 0.05f);
             }
             else
             {
-                animator.CrossFade("Attack3", 0.05f);
+                animator.CrossFade(player.hashAttacking3, 0.05f);
             }
 
             attackComboIndex++;
@@ -57,24 +57,26 @@ namespace AF
                 return;
             }
 
-            animator.SetBool("isBlocking", true);
-            animator.SetBool("isParrying", true);
+            animator.SetBool(player.hashBlocking, true);
 
-            PlaySfx(startBlockingSfx);
+            parryManager.EnableParrying();
 
-            if (player.inventory.shield != null)
+            Utils.PlaySfx(combatAudioSource, startBlockingSfx);
+
+            if (player.equipmentManager.GetShieldInstance() != null)
             {
-                player.inventory.shield.SetActive(true);
+                player.equipmentManager.GetShieldInstance().gameObject.SetActive(true);
             }
         }
 
         public void StopGuard()
         {
-            animator.SetBool("isBlocking", false);
+            animator.SetBool(player.hashBlocking, false);
+            parryManager.DisableParrying();
 
-            if (player.inventory.shield != null)
+            if (player.equipmentManager.GetShieldInstance() != null)
             {
-                player.inventory.shield.SetActive(false);
+                player.equipmentManager.GetShieldInstance().gameObject.SetActive(false);
             }
         }
 

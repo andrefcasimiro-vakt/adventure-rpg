@@ -13,12 +13,18 @@ namespace AF
         {
             animator.gameObject.TryGetComponent<Enemy>(out enemy);
 
-            enemy.GetComponent<Inventory>().shield.SetActive(true);
+            if (enemy.equipmentManager.GetShieldInstance() != null)
+            {
+                enemy.equipmentManager.GetShieldInstance().gameObject.SetActive(true);
+            }
         }
 
         public override void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
         {
-            enemy.GetComponent<Inventory>().shield.SetActive(false);
+            if (enemy.equipmentManager.GetShieldInstance() != null)
+            {
+                enemy.equipmentManager.GetShieldInstance().gameObject.SetActive(false);
+            }
         }
     }
 

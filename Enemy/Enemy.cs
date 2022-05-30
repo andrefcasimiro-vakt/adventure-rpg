@@ -6,7 +6,6 @@ using UnityEngine.AI;
 namespace AF
 {
 
-    [RequireComponent(typeof(Animator))]
     [RequireComponent(typeof(NavMeshAgent))]
     public class Enemy : Character
     {
@@ -20,7 +19,6 @@ namespace AF
         public readonly int hashAttacking1 = Animator.StringToHash("Attacking1");
         public readonly int hashAttacking2 = Animator.StringToHash("Attacking2");
         public readonly int hashAttacking3 = Animator.StringToHash("Attacking3");
-        public readonly int hashDodging = Animator.StringToHash("Dodging");
         public readonly int hashBlocking = Animator.StringToHash("Blocking");
         public readonly int hashWaiting = Animator.StringToHash("Waiting");
         

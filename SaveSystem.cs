@@ -101,7 +101,7 @@ namespace AF {
 
             Save(gameData, "gameData");
 
-            MainMenu.instance.Close();
+            // MenuManager.instance.Close();
         }
 
         public void LoadGameData()
@@ -159,7 +159,7 @@ namespace AF {
                 }
             }
 
-            MainMenu.instance.Close();
+            // MainMenu.instance.Close();
         }
 
     }

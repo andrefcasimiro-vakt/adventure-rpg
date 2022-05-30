@@ -5,8 +5,9 @@ namespace AF
 {
 
     [RequireComponent(typeof(Animator))]
+    [RequireComponent(typeof(Character))]
     [RequireComponent(typeof(CapsuleCollider))]
-    [RequireComponent(typeof(Inventory))]
+    [RequireComponent(typeof(InventoryManager))]
     public class Healthbox : MonoBehaviour
     {
         public readonly int hashTakingDamage = Animator.StringToHash("TakingDamage");
@@ -19,8 +20,14 @@ namespace AF
         public GameObject healthUI;
         public Image healthBarFillImage;
 
+        [Header("Sounds")]
+        public AudioSource combatAudioSource;
+        public AudioClip damageSfx;
+        public AudioClip deathGruntSfx;
+
+        Character character => GetComponent<Character>();
         Animator animator => GetComponent<Animator>();
-        Inventory inventory => GetComponent<Inventory>();
+        InventoryManager inventory => GetComponent<InventoryManager>();
 
         private void Update()
         {
@@ -32,7 +39,6 @@ namespace AF
 
         public void TakeDamage(float amount, Transform attackTransform)
         {
-            
             if (
                 // If shield is visible
                 inventory.shield.activeSelf
@@ -43,9 +49,15 @@ namespace AF
                 return;
             }
 
+            if (character.IsDodging())
+            {
+                return;
+            }
+
             health -= amount;
             ObjectPooler.instance.SpawnFromPool("Blood", attackTransform.position, Quaternion.identity, 1f);
 
+            Utils.PlaySfx(combatAudioSource, damageSfx);
             if (health <= 0)
             {
                 Die();
@@ -61,6 +73,13 @@ namespace AF
             animator.SetBool(hashDying, true);
         }
 
+        /// <summary>
+        /// Animation Event
+        /// </summary>
+        public void PlayDeathGrunt()
+        {
+            Utils.PlaySfx(combatAudioSource, deathGruntSfx);
+        }
     }
 
 }

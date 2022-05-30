@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace AF
 {
     [RequireComponent(typeof(SphereCollider))]
-    public class Shield : MonoBehaviour
+    public class ShieldInstance : MonoBehaviour
     {
 
         SphereCollider collider => GetComponent<SphereCollider>();

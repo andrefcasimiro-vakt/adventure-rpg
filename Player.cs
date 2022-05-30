@@ -6,11 +6,18 @@ namespace AF
 
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(CapsuleCollider))]
-    [RequireComponent(typeof(Animator))]
     public class Player : Character
     {
         public readonly int hashMovementSpeed = Animator.StringToHash("movementSpeed");
+        public readonly int hashBusy = Animator.StringToHash("Busy");
 
+        // Combat
+        public readonly int hashCombatting = Animator.StringToHash("Combatting");
+        public readonly int hashAttacking1 = Animator.StringToHash("Attacking1");
+        public readonly int hashAttacking2 = Animator.StringToHash("Attacking2");
+        public readonly int hashAttacking3 = Animator.StringToHash("Attacking3");
+        public readonly int hashBlocking = Animator.StringToHash("Blocking");
+        public readonly int hashDead = Animator.StringToHash("Dead");
 
         [Header("Movement")]
         public float walkSpeed = 6;
@@ -23,7 +30,7 @@ namespace AF
         public bool isParrying = false;
         public bool isSprinting = false;
         public bool isBlocking = false;
-        public bool isRolling = false;
+        public bool isDodging = false;
         public bool isDead = false;
 
         [Header("References")]
@@ -33,9 +40,12 @@ namespace AF
         [HideInInspector] public Rigidbody rigidbody => GetComponent<Rigidbody>();
         [HideInInspector] public CapsuleCollider capsuleCollider => GetComponent<CapsuleCollider>();
 
-        InputActions inputActions;
+        public InputActions inputActions;
 
         [HideInInspector] public PlayerCombatManager playerCombatManager => GetComponent<PlayerCombatManager>();
+        [HideInInspector] public Climber climber => GetComponent<Climber>();
+
+
 
         void OnEnable()
         {
@@ -62,35 +72,28 @@ namespace AF
 
             // Combat Input
             inputActions.PlayerActions.Attack.performed += ctx => playerCombatManager.HandleAttack();
-
             inputActions.PlayerActions.Guard.performed += ctx => playerCombatManager.Guard();
             inputActions.PlayerActions.Guard.canceled += ctx => playerCombatManager.StopGuard();
-
-            // UI
-            inputActions.PlayerActions.MainMenu.performed += ctx => MainMenu.instance.Open();
         }
 
         private void Start()
         {
-            if (inventory.shield != null)
+            if (equipmentManager.GetShieldInstance() != null)
             {
-                inventory.shield.SetActive(false);
+                equipmentManager.GetShieldInstance().gameObject.SetActive(false);
             }
         }
 
-
-
         protected void Update()
         {
-            isBlocking = animator.GetBool("isBlocking");
-            isRolling = animator.GetBool("isRolling");
-            isAttacking = animator.GetBool("isAttacking");
-            isDead = animator.GetBool("isDead");
-            isParrying = animator.GetBool("isParrying");
+            isBlocking = animator.GetBool(hashBlocking);
+            isDodging = animator.GetBool(hashDodging);
+            isAttacking = animator.GetBool(hashCombatting);
+            isDead = animator.GetBool(hashDead);
 
-            if (inventory.shield != null)
+            if (equipmentManager.GetShieldInstance() != null)
             {
-                inventory.shield.SetActive(isBlocking);
+                equipmentManager.GetShieldInstance().gameObject.SetActive(isBlocking);
             }
         }
 
@@ -154,8 +157,7 @@ namespace AF
 
         void HandleMovement()
         {
-
-            if (isAttacking || isRolling)
+            if (isAttacking || isDodging || climber.IsClimbing())
             {
                 return;
             }
@@ -172,14 +174,17 @@ namespace AF
                 }
                 else
                 {
-                    // Lock on to target logic
-                    Character closestCharacter = inventory.shield.GetComponent<Shield>().FindClosestCharacter(this.transform.position);
-
-                    if (closestCharacter != null)
+                    if (equipmentManager.GetShieldInstance() != null)
                     {
-                        var lookPos = closestCharacter.transform.position - transform.position;
-                        lookPos.y = 0;
-                        rotation = Quaternion.LookRotation(lookPos);
+                        // Lock on to target logic
+                        Character closestCharacter = equipmentManager.GetShieldInstance().FindClosestCharacter(this.transform.position);
+
+                        if (closestCharacter != null)
+                        {
+                            var lookPos = closestCharacter.transform.position - transform.position;
+                            lookPos.y = 0;
+                            rotation = Quaternion.LookRotation(lookPos);
+                        }
                     }
                 }
 
@@ -197,27 +202,28 @@ namespace AF
 
         protected void HandleRoll()
         {
-            if (IsNotAvailable() || isAttacking)
+            if (IsNotAvailable() || isAttacking || climber.IsClimbing())
             {
                 return;
             }
 
             if (isBlocking)
-            { 
+            {
                 playerCombatManager.StopGuard();
             }
 
             var rotation = Quaternion.LookRotation(GetMoveDirection());
 
-            if (moveDirection.magnitude != 0) { 
+            if (moveDirection.magnitude != 0)
+            {
                 transform.rotation = rotation;
             }
 
-            animator.CrossFade("Roll", 0.05f);
+            animator.CrossFade(hashDodging, 0.05f);
         }
         #endregion
 
-        
+
         public Vector3 GetMoveDirection()
         {
             bool cameraInverted = Camera.main.transform.forward.z <= 0;
@@ -229,7 +235,7 @@ namespace AF
 
         public bool IsNotAvailable()
         {
-            return isDead || MainMenu.instance.isOpen;
+            return isDead || MenuManager.instance.isOpen || animator.GetBool(hashBusy);
         }
 
     }

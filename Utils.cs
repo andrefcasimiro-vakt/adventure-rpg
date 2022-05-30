@@ -41,6 +41,14 @@ namespace AF
             return false;
         }
 
+        public static void PlaySfx(AudioSource source, AudioClip clip)
+        {
+            float pitch = Random.Range(0.95f, 1.05f);
+            source.pitch = pitch;
+
+            source.PlayOneShot(clip);
+        }
+
     }
 
 }

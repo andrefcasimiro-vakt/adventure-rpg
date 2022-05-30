@@ -16,7 +16,11 @@ namespace AF
 
         public override void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
         {
-            if (Utils.PlayerIsSighted(enemy.transform, enemy.player, enemy.obstructionMask))
+            // Chase Player if available
+            if (
+                enemy.player.IsNotAvailable() == false
+                && Utils.PlayerIsSighted(enemy.transform, enemy.player, enemy.obstructionMask)
+            )
             {
                 animator.SetBool(enemy.hashPatrol, false);
                 animator.SetBool(enemy.hashChasing, true);

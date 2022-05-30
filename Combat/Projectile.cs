@@ -67,7 +67,7 @@ namespace AF
                 return;
             }
 
-            if (player.IsNotAvailable() || player.isRolling)
+            if (player.IsNotAvailable() || player.isDodging)
             {
                 return;
             }

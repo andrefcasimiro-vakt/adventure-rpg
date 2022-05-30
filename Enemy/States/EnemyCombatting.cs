@@ -16,9 +16,13 @@ namespace AF
         {
             animator.gameObject.TryGetComponent<Enemy>(out enemy);
 
-            enemy.GetComponent<Inventory>().shield.SetActive(false);
+            if (enemy.GetComponent<EquipmentManager>().GetShieldInstance() != null)
+            {
+                enemy.GetComponent<EquipmentManager>().GetShieldInstance().gameObject.SetActive(false);
+            }
 
-            if (IsPlayerFarAway())
+            // Early exit to Chase state
+            if (enemy.player.IsNotAvailable() || IsPlayerFarAway())
             {
                 animator.SetBool(enemy.hashCombatting, false);
                 animator.SetBool(enemy.hashChasing, true);
@@ -74,7 +78,10 @@ namespace AF
             if (blockDice >= enemy.blockChance)
             {
                 // Show Shield
-                enemy.GetComponent<Inventory>().shield.SetActive(true);
+                if (enemy.GetComponent<EquipmentManager>().GetShieldInstance() != null)
+                {
+                    enemy.GetComponent<EquipmentManager>().GetShieldInstance().gameObject.SetActive(true);
+                }
 
                 Utils.FaceTarget(enemy.transform, enemy.player.transform);
                 animator.SetTrigger(enemy.hashBlocking);
@@ -90,7 +97,7 @@ namespace AF
                 }
                 else
                 {
-                    animator.SetTrigger(enemy.hashDodging);
+                    animator.SetTrigger(enemy.hashWaiting);
                 }
             }
             else

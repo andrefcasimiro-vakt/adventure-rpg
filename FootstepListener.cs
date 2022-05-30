@@ -10,6 +10,13 @@ namespace AF
 
         public AudioSource footstepAudioSource;
 
+        Player player;
+
+        private void Awake()
+        {
+            TryGetComponent<Player>(out player);
+        }
+
         /// <summary>
         /// Animation Event
         /// </summary>
@@ -21,16 +28,16 @@ namespace AF
                 return;
             }
 
+            if (player != null)
+            {
+                if (player.isAttacking)
+                {
+                    return;
+                }
+            }
+
             AudioClip clip = FootstepSystem.instance.GetFootstepClip(groundTag);
-            PlaySfx(clip);
-        }
-
-        private void PlaySfx(AudioClip clip)
-        {
-            float pitch = Random.Range(0.95f, 1.05f);
-            footstepAudioSource.pitch = pitch;
-
-            footstepAudioSource.PlayOneShot(clip);
+            Utils.PlaySfx(footstepAudioSource, clip);
         }
 
         private string GetGroundTag()

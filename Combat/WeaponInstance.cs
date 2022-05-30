@@ -1,12 +1,13 @@
 ﻿using UnityEngine;
-using System.Collections;
 
 namespace AF
 {
 
     [RequireComponent(typeof(BoxCollider))]
-    public class Weapon : MonoBehaviour
+    public class WeaponInstance : MonoBehaviour
     {
+        public Character weaponOwner;
+
         [Header("Stats")]
         public float attackPower = 30;
         public float criticalAttackPower = 75;
@@ -14,6 +15,11 @@ namespace AF
         // References
         BoxCollider boxCollider => GetComponent<BoxCollider>();
         Healthbox targetHealthbox;
+
+        private void Awake()
+        {
+            weaponOwner = transform.GetComponentInParent<Character>();
+        }
 
         // Start is called before the first frame update
         void Start()
@@ -41,7 +47,7 @@ namespace AF
                 return;
             }
 
-            targetHealthbox.TakeDamage(attackPower, this.transform);
+            targetHealthbox.TakeDamage(attackPower, weaponOwner.transform);
         }
 
     }
