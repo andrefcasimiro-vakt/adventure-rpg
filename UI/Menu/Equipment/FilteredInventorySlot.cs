@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 namespace AF
 {
@@ -20,13 +21,27 @@ namespace AF
 
         private void Start()
         {
-            GameObject.FindWithTag("Player").TryGetComponent(out equipmentManager);
 
             if (item != null)
             {
                 transform.GetChild(0).GetComponent<Text>().text = item.name;
             }
+
+            Setup();
+
         }
+
+        private void OnSceneLoaded()
+        {
+            Setup();
+        }
+
+        void Setup()
+        {
+            GameObject.FindWithTag("Player").TryGetComponent(out equipmentManager);
+
+        }
+
 
         public void OnClick()
         {

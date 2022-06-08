@@ -31,10 +31,7 @@ namespace AF
 
         private void Update()
         {
-            if (healthUI.activeSelf)
-            {
-                healthBarFillImage.fillAmount = health * 0.01f;
-            }
+            healthBarFillImage.fillAmount = health * 0.01f;
         }
 
         public void TakeDamage(float amount, Transform attackTransform)

@@ -1,11 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.IO;
+using System;
 
 namespace AF
 {
 
-    public class EquipmentManager : MonoBehaviour
+    public class EquipmentManager : MonoBehaviour, ISaveable
     {
 
         public Weapon weapon;
@@ -45,6 +47,8 @@ namespace AF
 
         void Start()
         {
+            SaveSystem.instance.OnGameLoad += OnGameLoaded;
+
             ReloadEquipmentGraphics();
 
             equipmentMenu = FindObjectOfType<EquipmentMenu>(true);
@@ -52,6 +56,8 @@ namespace AF
 
         public void Equip(Weapon weaponToEquip)
         {
+            if (weaponToEquip == null) return;
+
             this.weapon = weaponToEquip;
 
             equipmentMenu.UpdateEquipmentButtonTexts();
@@ -59,6 +65,8 @@ namespace AF
 
         public void Equip(Shield shieldToEquip)
         {
+            if (shieldToEquip == null) return;
+
             this.shield = shieldToEquip;
 
             equipmentMenu.UpdateEquipmentButtonTexts();
@@ -66,6 +74,8 @@ namespace AF
 
         public void Equip(Armor armor)
         {
+            if (armor == null) return;
+
             ArmorSlot armorType = armor.armorType;
 
             if (armorType == ArmorSlot.Head)
@@ -92,6 +102,8 @@ namespace AF
 
         public void EquipAccessory(Accessory accessory, int index)
         {
+            if (accessory == null) return;
+
             if (index == 0)
             {
                 this.accessory1 = accessory;
@@ -126,7 +138,7 @@ namespace AF
 
                 foreach (Transform t in GetComponentsInChildren<Transform>(true))
                 {
-                    if (this.helmet.graphicNameToShow == t.gameObject.name)
+                    if (this.helmet != null && this.helmet.graphicNameToShow == t.gameObject.name)
                     {
                         t.gameObject.SetActive(false);
                     }
@@ -139,7 +151,7 @@ namespace AF
             {
                 foreach (Transform t in GetComponentsInChildren<Transform>(true))
                 {
-                    if (this.chest.graphicNameToShow == t.gameObject.name)
+                    if (this.chest != null && this.chest.graphicNameToShow == t.gameObject.name)
                     {
                         t.gameObject.SetActive(false);
                     }
@@ -151,7 +163,7 @@ namespace AF
             {
                 foreach (Transform t in GetComponentsInChildren<Transform>(true))
                 {
-                    if (this.gauntlets.graphicNameToShow == t.gameObject.name)
+                    if (this.gauntlets != null && this.gauntlets.graphicNameToShow == t.gameObject.name)
                     {
                         t.gameObject.SetActive(false);
                     }
@@ -163,7 +175,7 @@ namespace AF
             {
                 foreach (Transform t in GetComponentsInChildren<Transform>(true))
                 {
-                    if (this.legwear.graphicNameToShow == t.gameObject.name)
+                    if (this.legwear != null && this.legwear.graphicNameToShow == t.gameObject.name)
                     {
                         t.gameObject.SetActive(false);
                     }
@@ -323,5 +335,86 @@ namespace AF
 
             return shieldInstance;
         }
+
+
+
+        public void OnGameLoaded(GameData gameData)
+        {
+            Debug.Log("Loading equipment");
+            PlayerEquipmentData playerEquipmentData = gameData.playerEquipmentData;
+
+            if (!String.IsNullOrEmpty(playerEquipmentData.weaponName))
+            {
+                Equip(InventoryDatabase.instance.GetWeapon(playerEquipmentData.weaponName));
+            }
+            else
+            {
+                UnequipWeapon();
+            }
+
+            if (!String.IsNullOrEmpty(playerEquipmentData.shieldName))
+            {
+                Equip(InventoryDatabase.instance.GetShield(playerEquipmentData.shieldName));
+            }
+            else
+            {
+                UnequipShield();
+            }
+
+            if (!String.IsNullOrEmpty(playerEquipmentData.helmetName))
+            {
+                Equip(InventoryDatabase.instance.GetHelmet(playerEquipmentData.helmetName));
+            }
+            else
+            {
+                UnequipArmorSlot(ArmorSlot.Head);
+            }
+
+            if (!String.IsNullOrEmpty(playerEquipmentData.chestName))
+            {
+                Equip(InventoryDatabase.instance.GetChestArmor(playerEquipmentData.chestName));
+            }
+            else
+            {
+                UnequipArmorSlot(ArmorSlot.Chest);
+            }
+
+            if (!String.IsNullOrEmpty(playerEquipmentData.legwearName))
+            {
+                Equip(InventoryDatabase.instance.GetLegwear(playerEquipmentData.legwearName));
+            }
+            else
+            {
+                UnequipArmorSlot(ArmorSlot.Legs);
+            }
+
+            if (!String.IsNullOrEmpty(playerEquipmentData.gauntletsName))
+            {
+                Equip(InventoryDatabase.instance.GetGauntlets(playerEquipmentData.gauntletsName));
+            }
+            else
+            {
+                UnequipArmorSlot(ArmorSlot.Arms);
+            }
+
+            if (!String.IsNullOrEmpty(playerEquipmentData.accessory1Name))
+            {
+                EquipAccessory(InventoryDatabase.instance.GetAccessory(playerEquipmentData.accessory1Name), 0);
+            }
+            else
+            {
+                UnequipAccessory(0);
+            }
+
+            if (!String.IsNullOrEmpty(playerEquipmentData.accessory2Name))
+            {
+                EquipAccessory(InventoryDatabase.instance.GetAccessory(playerEquipmentData.accessory2Name), 1);
+            }
+            else
+            {
+                UnequipAccessory(1);
+            }
+        }
+
     }
 }

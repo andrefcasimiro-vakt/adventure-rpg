@@ -17,9 +17,11 @@ namespace AF
 
         int attackComboIndex = 0;
 
+        public bool canCombat = true;
+
         public void HandleAttack()
         {
-            if (player.IsNotAvailable() || player.isAttacking)
+            if (!CanCombat() || player.IsNotAvailable() || player.isAttacking)
             {
                 return;
             }
@@ -52,7 +54,7 @@ namespace AF
 
         public void Guard()
         {
-            if (player.IsNotAvailable() || player.isSprinting)
+            if (!CanCombat() || player.IsNotAvailable() || player.isSprinting)
             {
                 return;
             }
@@ -72,12 +74,28 @@ namespace AF
         public void StopGuard()
         {
             animator.SetBool(player.hashBlocking, false);
-            parryManager.DisableParrying();
+            // parryManager.DisableParrying();
 
             if (player.equipmentManager.GetShieldInstance() != null)
             {
                 player.equipmentManager.GetShieldInstance().gameObject.SetActive(false);
             }
+        }
+
+        public void EnableCombat()
+        {
+            this.canCombat = true;
+        }
+
+
+        public void DisableCombat()
+        {
+            this.canCombat = false;
+        }
+
+        public bool CanCombat()
+        {
+            return this.canCombat;
         }
 
 

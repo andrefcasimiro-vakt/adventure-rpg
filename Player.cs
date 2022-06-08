@@ -43,19 +43,10 @@ namespace AF
         public InputActions inputActions;
 
         [HideInInspector] public PlayerCombatManager playerCombatManager => GetComponent<PlayerCombatManager>();
-        [HideInInspector] public Climber climber => GetComponent<Climber>();
-
-
+        // [HideInInspector] public Climber climber => GetComponent<Climber>();
 
         void OnEnable()
         {
-            inputActions.Enable();
-        }
-
-        void Awake()
-        {
-            base.Awake();
-
             if (inputActions == null)
             {
                 inputActions = new InputActions();
@@ -74,14 +65,49 @@ namespace AF
             inputActions.PlayerActions.Attack.performed += ctx => playerCombatManager.HandleAttack();
             inputActions.PlayerActions.Guard.performed += ctx => playerCombatManager.Guard();
             inputActions.PlayerActions.Guard.canceled += ctx => playerCombatManager.StopGuard();
+
+            // UI
+            inputActions.PlayerActions.MainMenu.performed += ctx =>
+            {
+                MainMenu mainMenu = FindObjectOfType<MainMenu>(true);
+                Player player = FindObjectOfType<Player>(true);
+
+                // Stop player
+                animator.SetFloat("movementSpeed", 0f);
+
+                mainMenu.Open();
+            };
+
+            inputActions.PlayerActions.MainMenu.performed += ctx =>
+            {
+                EquipmentMenu equipmentMenu = FindObjectOfType<EquipmentMenu>(true);
+                equipmentMenu.Close();
+            };
+
+            inputActions.Enable();
+        }
+
+        private void OnDisable()
+        {
+            inputActions.Disable();
+        }
+
+        void Awake()
+        {
+            base.Awake();
+
+            DontDestroyOnLoad(this.gameObject);
         }
 
         private void Start()
         {
+            base.Start();
+
             if (equipmentManager.GetShieldInstance() != null)
             {
                 equipmentManager.GetShieldInstance().gameObject.SetActive(false);
             }
+
         }
 
         protected void Update()
@@ -157,7 +183,7 @@ namespace AF
 
         void HandleMovement()
         {
-            if (isAttacking || isDodging || climber.IsClimbing())
+            if (isAttacking || isDodging)
             {
                 return;
             }
@@ -202,7 +228,7 @@ namespace AF
 
         protected void HandleRoll()
         {
-            if (IsNotAvailable() || isAttacking || climber.IsClimbing())
+            if (IsNotAvailable() || isAttacking)
             {
                 return;
             }
@@ -236,6 +262,17 @@ namespace AF
         public bool IsNotAvailable()
         {
             return isDead || MenuManager.instance.isOpen || animator.GetBool(hashBusy);
+        }
+
+        public void MarkAsBusy()
+        {
+            this.animator.SetFloat(hashMovementSpeed, 0f);
+            this.animator.SetBool(hashBusy, true);
+        }
+
+        public void MarkAsActive()
+        {
+            this.animator.SetBool(hashBusy, false);
         }
 
     }

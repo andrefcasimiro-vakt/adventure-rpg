@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System;
+using UnityEngine.SceneManagement;
+using UnityEngine.Events;
 
 namespace AF {
 
@@ -18,9 +20,27 @@ namespace AF {
     }
 
     [System.Serializable]
+    public class PlayerEquipmentData
+    {
+        public string weaponName;
+        public string shieldName;
+        public string helmetName;
+        public string chestName;
+        public string gauntletsName;
+        public string legwearName;
+        public string accessory1Name;
+        public string accessory2Name;
+    }
+
+    [System.Serializable]
     public class GameData
     {
+        public string currentSceneName;
+        public int currentSceneIndex;
+
         public CharacterData[] characters;
+
+        public PlayerEquipmentData playerEquipmentData;
 
         public string activeCameraName;
     }
@@ -28,6 +48,11 @@ namespace AF {
     [RequireComponent(typeof(AudioSource))]
     public class SaveSystem : MonoBehaviour
     {
+
+        public delegate void OnGameLoadEvent(GameData gameData);
+        // the event itself
+        public event OnGameLoadEvent OnGameLoad;
+
 
         public static SaveSystem instance;
 
@@ -79,6 +104,12 @@ namespace AF {
             audioSource.PlayOneShot(saveSfx);
             GameData gameData = new GameData();
 
+
+            // Scene Name
+            Scene scene = SceneManager.GetActiveScene();
+            gameData.currentSceneName = scene.name;
+            gameData.currentSceneIndex = scene.buildIndex;
+
             // Characters
             List<CharacterData> charactersData = new List<CharacterData>();
 
@@ -99,9 +130,55 @@ namespace AF {
 
             gameData.activeCameraName = CameraManager.instance.currentCamera.name;
 
+            // Player Equipment
+            EquipmentManager equipmentManager = FindObjectOfType<EquipmentManager>();
+            PlayerEquipmentData playerEquipmentData = new PlayerEquipmentData();
+
+            if (equipmentManager.weapon != null)
+            {
+                playerEquipmentData.weaponName = equipmentManager.weapon.name;
+            }
+
+            if (equipmentManager.shield != null)
+            {
+                playerEquipmentData.shieldName = equipmentManager.shield.name;
+            }
+
+            if (equipmentManager.helmet != null)
+            {
+                playerEquipmentData.helmetName = equipmentManager.helmet.name;
+            }
+
+            if (equipmentManager.chest != null)
+            {
+                playerEquipmentData.chestName = equipmentManager.chest.name;
+            }
+
+            if (equipmentManager.legwear != null)
+            {
+                playerEquipmentData.legwearName = equipmentManager.legwear.name;
+            }
+
+            if (equipmentManager.gauntlets != null)
+            {
+                playerEquipmentData.gauntletsName = equipmentManager.gauntlets.name;
+            }
+
+            if (equipmentManager.accessory1 != null)
+            {
+                playerEquipmentData.accessory1Name = equipmentManager.accessory1.name;
+            }
+
+            if (equipmentManager.accessory2 != null)
+            {
+                playerEquipmentData.accessory2Name = equipmentManager.accessory2.name;
+            }
+
+            gameData.playerEquipmentData = playerEquipmentData;
+
             Save(gameData, "gameData");
 
-            // MenuManager.instance.Close();
+            MenuManager.instance.CloseAll();
         }
 
         public void LoadGameData()
@@ -109,57 +186,19 @@ namespace AF {
             audioSource.PlayOneShot(saveSfx);
             GameData gameData = Load<GameData>("gameData");
 
-            // Create lookup
-            Dictionary<string, CharacterData> characterDataDictionary = new Dictionary<string, CharacterData>();
-            foreach (CharacterData charData in gameData.characters) {
-                characterDataDictionary.Add(charData.uuid, charData);
-            }
+            // Load scene first
+            SceneManager.LoadScene(gameData.currentSceneIndex);
 
-            Character[] characters = GameObject.FindObjectsOfType<Character>(true);
-            foreach (Character c in characters)
-            {
-                if (characterDataDictionary.ContainsKey(c.uuid)) { 
-                    CharacterData charData = characterDataDictionary[c.uuid];
-                    c.transform.position = charData.position;
-                    c.transform.rotation = charData.rotation;
+            StartCoroutine(CallLoad(gameData));
+        }
 
-                    if (charData.isActive)
-                    {
-                        c.healthbox.health = charData.health;
+        IEnumerator CallLoad(GameData gameData)
+        {
+            yield return null;
 
-                        if (c.healthbox.health <= 0)
-                        {
-                            c.healthbox.Die();
-                        }
-                    }
-                    else
-                    {
-                        c.gameObject.SetActive(false);
-                    }
+            OnGameLoad(gameData);
+            MenuManager.instance.CloseAll();
 
-                    
-                }
-            }
-
-            // Saved Player Camera
-            if (gameData.activeCameraName != null && gameData.activeCameraName != "") {
-                GameObject targetCamera = null;
-                GameObject cameraHolder = GameObject.Find("Cameras");
-                foreach (Transform t in cameraHolder.transform)
-                {
-                    if (t.gameObject.name == gameData.activeCameraName)
-                    {
-                        targetCamera = t.gameObject;
-                    }
-                }
-
-                if (targetCamera  != null)
-                {
-                    CameraManager.instance.SwitchCamera(targetCamera);
-                }
-            }
-
-            // MainMenu.instance.Close();
         }
 
     }

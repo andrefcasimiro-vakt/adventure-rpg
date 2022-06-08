@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 
 namespace AF
 {
@@ -33,20 +34,30 @@ namespace AF
 
         Player player;
 
+
         private void Start()
+        {
+            Setup();
+        }
+
+        private void OnSceneLoaded()
+        {
+            Setup();
+        }
+
+        void Setup()
         {
             GameObject.FindWithTag("Player").TryGetComponent<Player>(out player);
 
             if (player != null)
             {
                 player.inputActions.PlayerActions.MainMenu.performed += ctx => Close();
+
+                player.TryGetComponent(out inventoryManager);
+                player.TryGetComponent(out equipmentManager);
             }
-
-            filteredInventoryPanel.gameObject.SetActive(false);
-
-            player.TryGetComponent(out inventoryManager);
-            player.TryGetComponent(out equipmentManager);
         }
+
 
         public void OpenInventoryForWeapons()
         {
@@ -275,6 +286,8 @@ namespace AF
 
         public void Close()
         {
+            if (filteredInventoryPanel == null) return;
+
             if (filteredInventoryPanel.activeSelf == false)
             {
                 return;

@@ -41,7 +41,13 @@ namespace AF
 
         private void Start()
         {
+
             RefreshWindows(null);
+        }
+
+        public void CloseAll()
+        {
+            SetWindow(MenuWindow.NULL, null, false);
         }
 
         public void SetWindow(MenuWindow nextMenuWindow, GameObject firstSelectedGameObject, bool shouldOpen)
@@ -55,6 +61,9 @@ namespace AF
 
         void RefreshWindows(GameObject firstSelectedGameObject)
         {
+            mainMenuUI = FindObjectOfType<MainMenu>(true).gameObject;
+            equipmentMenuUI = FindObjectOfType<EquipmentMenu>(true).gameObject;
+
             switch (currentMenuWindow)
             {
                 case MenuWindow.MAIN:
@@ -71,7 +80,10 @@ namespace AF
                     break;
             }
 
-            EventSystem.current.SetSelectedGameObject(firstSelectedGameObject);
+            if (firstSelectedGameObject != null)
+            {
+                EventSystem.current.SetSelectedGameObject(firstSelectedGameObject);
+            }
         }
 
         public void PlayButtonSelect()

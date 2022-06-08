@@ -26,11 +26,11 @@ namespace AF
                 return;
             }
 
-            if (player.climber.IsClimbing())
-            {
-                player.climber.FinishClimbing(isAscending);
-                return;
-            }
+            //if (player.climber.IsClimbing())
+            //{
+            //    player.climber.FinishClimbing(isAscending);
+            //    return;
+            //}
 
 
             other.gameObject.transform.position = Vector3.Lerp(other.transform.position, transform.position, Time.deltaTime * 20f);
@@ -40,7 +40,7 @@ namespace AF
             var targetRot = Quaternion.LookRotation(lookPos);
             other.transform.rotation = Quaternion.Slerp(other.transform.rotation, targetRot, Time.deltaTime * 20f);
 
-            player.climber.BeginClimbing(isAscending);
+            //player.climber.BeginClimbing(isAscending);
         }
     }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 namespace AF
 {
@@ -18,12 +19,22 @@ namespace AF
 
         private void Start()
         {
-            GameObject.FindWithTag("Player").TryGetComponent<Player>(out player);
+            Setup();
+        }
 
-            if (player != null)
-            {
-                player.inputActions.PlayerActions.MainMenu.performed += ctx => Open();
-            }
+        private void OnSceneLoaded()
+        {
+            Setup();
+        }
+
+        void Setup()
+        {
+            //GameObject.FindWithTag("Player").TryGetComponent<Player>(out player);
+
+            //if (player != null)
+            //{
+            //    player.inputActions.PlayerActions.MainMenu.performed += ctx => Open();
+            //}
         }
 
         public void Open()
@@ -34,7 +45,11 @@ namespace AF
                 return;
             }
 
-            player.animator.SetFloat("movementSpeed", 0f);
+            //if (player != null)
+            //{
+            //    player.animator.SetFloat("movementSpeed", 0f);
+            //}
+
             MenuManager.instance.SetWindow(MenuWindow.MAIN, this.firstSelectedButton, true);
         }
 

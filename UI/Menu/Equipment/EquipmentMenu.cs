@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 namespace AF
 {
@@ -26,19 +27,22 @@ namespace AF
 
         Player player;
 
-        private void Awake()
+        
+        private void Start()
+        {
+            Setup();
+        }
+
+        private void OnSceneLoaded()
+        {
+            Setup();
+        }
+
+        void Setup()
         {
             GameObject.FindWithTag("Player").TryGetComponent<Player>(out player);
         }
 
-        private void Start()
-        {
-
-            if (player != null)
-            {
-                player.inputActions.PlayerActions.MainMenu.performed += ctx => Close();
-            }
-        }
 
         public void Open()
         {
@@ -60,6 +64,8 @@ namespace AF
 
         public void UpdateEquipmentButtonTexts()
         {
+            Setup();
+
             if (player.equipmentManager.weapon != null)
             {
                 weaponBTNText.text = "WEAPON | " + player.equipmentManager.weapon.name;
